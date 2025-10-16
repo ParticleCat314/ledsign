@@ -1,3 +1,4 @@
+import json
 ''' 
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
@@ -50,4 +51,8 @@ class Sign:
         self.text = text
         self.color = color
         print( f"Sign text set to: {text} with color {color}" )
+
+
+### Global stuff because why not
+s = Sign("Hello, World!", color=(0, 255, 0), speed=100)
 
