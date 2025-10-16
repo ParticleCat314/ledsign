@@ -3,116 +3,169 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>{{ title }}</title>
+  <title>Shop Sign</title>
   <style>
-    :root { --bg: #0c0d10; --card: #151721; --ink: #e8ecf1; --muted:#9aa3af; --accent:#6ee7b7; --warn:#f59e0b; --danger:#ef4444; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--ink); }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px; }
-    h1 { font-size: 1.8rem; margin: 0 0 12px; }
-    .sub { color: var(--muted); margin-bottom: 24px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .card { background: var(--card); border: 1px solid #222536; border-radius: 12px; padding: 16px; }
-    label { display:block; font-weight: 600; margin: 10px 0 6px; }
-    input[type="time"], input[type="text"], textarea, select {
-      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2b3047; background:#0d0f18; color: var(--ink);
-    }
-    textarea { min-height: 110px; resize: vertical; }
-    .row { display:flex; gap: 12px; }
-    .btn { display:inline-block; padding: 10px 14px; border-radius: 10px; border: 1px solid #2b3047; background:#10131f; color: var(--ink); text-decoration:none; cursor:pointer; }
-    .btn:hover { filter: brightness(1.15); }
-    .btn.primary { border-color:#1f6e52; box-shadow: inset 0 0 0 1px #1f6e52; }
-    .btn.warn { border-color:#7a560d; box-shadow: inset 0 0 0 1px #7a560d; }
-    .btn.danger { border-color:#7a1c1c; box-shadow: inset 0 0 0 1px #7a1c1c; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { padding: 10px 8px; border-bottom:1px solid #23263a; vertical-align: middle; }
-    th { text-align:left; color: var(--muted); font-weight:600; }
-    .right { text-align:right; }
-    .chip { padding: 2px 8px; border-radius: 999px; background:#0d0f18; border:1px solid #2b3047; font-size: 12px; color: var(--muted); }
-    .flash { margin-bottom: 16px; padding: 10px 12px; border-radius: 8px; }
-    .flash.ok { background: rgba(110,231,183,0.12); border:1px solid #1f6e52; }
-    .flash.err { background: rgba(239,68,68,0.12); border:1px solid #7a1c1c; }
-    footer { margin-top: 28px; color: var(--muted); font-size: 12px; }
-    code { background:#0d0f18; padding:2px 6px; border-radius:6px; border:1px solid #2b3047; }
+    :root{ --accent:#2563eb; --muted:#6b7280; --radius:12px; }
+    *{ box-sizing:border-box }
+    body{ margin:0; font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0f1115; color:#111827; }
+    .wrap{ max-width:960px; margin:auto; padding:24px; display:grid; gap:16px; grid-template-columns:1.2fr 1fr; }
+    @media (max-width:900px){ .wrap{ grid-template-columns:1fr } }
+    .card{ background:#fff; border:1px solid #e5e7eb; border-radius:var(--radius); box-shadow:0 8px 24px rgba(0,0,0,.08) }
+    .card h2{ margin:0; padding:12px 14px; border-bottom:1px solid #eef0f4; font-size:1rem }
+    .body{ padding:14px }
+    label{ font-weight:600; font-size:.92rem }
+    select,input{ width:100%; padding:.6rem .7rem; border:1px solid #d1d5db; border-radius:10px; outline:0 }
+    select:focus,input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.2) }
+    .grid{ display:grid; gap:.8rem }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:.8rem }
+    @media (max-width:520px){ .row{ grid-template-columns:1fr } }
+    fieldset{ border:1px dashed #e5e7eb; border-radius:10px; padding:.8rem }
+    legend{ color:var(--muted); font-size:.85rem; padding:0 .4rem }
+    .chips{ display:grid; grid-template-columns:repeat(7,1fr); gap:.35rem; margin-top:.4rem }
+    .chip{ display:inline-block; text-align:center; padding:.38rem .2rem; border:1px solid #d1d5db; border-radius:10px; user-select:none }
+    input[type=checkbox]{ display:none } input[type=checkbox]:checked + .chip{ border-color:var(--accent); background:#dbeafe; color:#1e40af; font-weight:600 }
+    button{ cursor:pointer; border:0; border-radius:10px; padding:.6rem .9rem; font-weight:600 }
+    .primary{ background:var(--accent); color:#fff } .muted{ background:#f3f4f6 } .danger{ background:#fee2e2; color:#991b1b }
+    table{ width:100%; border-collapse:collapse } th,td{ padding:.55rem .5rem; border-bottom:1px solid #eef0f4; text-align:left; vertical-align:top }
+    th{ font-size:.85rem; color:var(--muted) }
+    .hint{ color:var(--muted); font-size:.85rem }
+    .sign{ background:#0b0f14; border:1px solid #1f2937; height:140px; border-radius:14px; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative }
+    .sign .txt{ font-weight:800; letter-spacing:.04em; text-transform:uppercase; font-size:1.8rem; color:#e5f4ff; white-space:nowrap; text-shadow:0 0 4px rgba(56,189,248,.5),0 0 14px rgba(56,189,248,.25) }
+    .scrolling .txt{ animation:scroll 9s linear infinite }
+    @keyframes scroll{ from{ transform:translateX(100%) } to{ transform:translateX(-100%) } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>💡 {{ title }}</h1>
-    <div class="sub">Timezone: <code>{{ tz }}</code> &nbsp;•&nbsp; Now: <code>{{ now }}</code></div>
+  <main class="wrap">
+    <!-- Editor -->
+    <section class="card">
+      <h2>Editor</h2>
+      <div class="body">
+        <div class="sign" id="preview"><div class="txt" id="previewTxt">{{ form_message or "Welcome" }}</div></div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for cat, msg in messages %}
-          <div class="flash {{ 'ok' if cat == 'ok' else 'err' }}">{{ msg }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <div class="grid">
-      <div class="card">
-        <h2 style="margin-top:0">Daily ON/OFF Schedule</h2>
-        <form method="post" action="{{ url_for('save_schedule') }}">
-          <label for="on_time">Turn ON at</label>
-          <input type="time" id="on_time" name="on_time" required>
-          <label for="off_time" style="margin-top:14px">Turn OFF at</label>
-          <input type="time" id="off_time" name="off_time" required>
-
-          <label for="days" style="margin-top:14px">Days (hold Ctrl/⌘ to select multiple)</label>
-          <select id="days" name="days" multiple size="7" required>
-            {% for d in ['mon','tue','wed','thu','fri','sat','sun'] %}
-              <option value="{{ d }}">{{ d|upper }}</option>
-            {% endfor %}
-          </select>
-
-          <div class="row" style="margin-top:14px">
-            <button class="btn primary" type="submit">Save daily schedule</button>
-            <a class="btn warn" href="{{ url_for('clear_daily') }}" onclick="return confirm('Remove all daily ON/OFF jobs?')">Clear all daily jobs</a>
+        <form class="grid" method="post" action="{{ url_for('add_schedule') }}" style="margin-top:1rem">
+          {{ csrf_token() if csrf_token }}
+          <div class="row">
+            <div>
+              <label for="preset">Preset</label>
+              <select id="preset">
+                <option value="">None</option>
+                {% for key,label in presets.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="contentType">Display animation</label>
+              <select id="contentType" name="content_type">
+                <option value="scrolling" {{ 'selected' if form_type=='scrolling' }}>Scrolling</option>
+                <option value="static" {{ 'selected' if form_type=='static' }}>Static</option>
+              </select>
+            </div>
           </div>
+
+          <div>
+            <label for="message">Message</label>
+            <input id="message" name="message" maxlength="60" value="{{ form_message or '' }}" placeholder="Enter your message"/>
+          </div>
+
+          <fieldset>
+            <legend>Schedule</legend>
+            <div class="row">
+              <div>
+                <label for="startTime">Start time</label>
+                <input type="time" id="startTime" name="time" value="{{ form_time or '' }}"/>
+              </div>
+              <div>
+                <label for="specificDate">Specific date (optional)</label>
+                <input type="date" id="specificDate" name="date" value="{{ form_date or '' }}"/>
+              </div>
+            </div>
+
+            <div style="margin-top:.5rem">
+              <span>Days of week (for recurring)</span>
+              <div class="chips">
+                {% for d,abbr in [(1,'Mon'),(2,'Tue'),(3,'Wed'),(4,'Thu'),(5,'Fri'),(6,'Sat'),(0,'Sun')] %}
+                  {% set checked = 'checked' if d in (form_days or []) else '' %}
+                  <label><input type="checkbox" name="days" value="{{ d }}" {{ checked }}><span class="chip">{{ abbr }}</span></label>
+                {% endfor %}
+              </div>
+              <div class="hint" style="margin-top:.35rem">Pick a specific date OR some days.</div>
+            </div>
+
+            <div style="display:flex; gap:.6rem; margin-top:.6rem">
+              <button class="primary" type="submit">Add to schedule</button>
+              <a href="{{ url_for('clear_schedule') }}" class="muted" style="text-decoration:none; display:inline-block; padding:.65rem .9rem; border-radius:10px">Clear</a>
+            </div>
+          </fieldset>
         </form>
       </div>
+    </section>
 
-      <div class="card">
-        <h2 style="margin-top:0">Update Sign Content</h2>
-        <form method="post" action="{{ url_for('update_content') }}">
-          <label for="content">Message</label>
-          <textarea id="content" name="content" placeholder="Type your new sign message..." required></textarea>
-          <div class="row" style="margin-top:14px">
-            <button class="btn primary" type="submit">Update now</button>
-          </div>
-        </form>
+    <!-- Schedule -->
+    <section class="card">
+      <h2>Schedule</h2>
+      <div class="body">
+        <table>
+          <thead>
+            <tr><th>Start</th><th>Content</th><th>Recurring</th><th>Next run</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% if items %}
+              {% for it in items %}
+              <tr>
+                <td>
+                  <div>{{ it.time }}</div>
+                  <div class="hint">{{ 'One-off' if it.date else 'Recurring' }}</div>
+                </td>
+                <td>
+                  <div><strong>{{ it.message }}</strong></div>
+                  <div class="hint">{{ 'Scrolling' if it.type=='scrolling' else 'Static' }}</div>
+                </td>
+                <td>
+                  {% if it.date %}
+                    —
+                  {% else %}
+                    {{ it.days|map('day_name_abbr')|join(', ') if it.days else '—' }}
+                  {% endif %}
+                </td>
+                <td>{{ it.next_run_human or '—' }}</td>
+                <td style="white-space:nowrap">
+                  <a class="muted" style="text-decoration:none;padding:.4rem .6rem;border-radius:8px" href="{{ url_for('edit_schedule', id=it.id) }}">Edit</a>
+                  <a class="danger" style="text-decoration:none;padding:.4rem .6rem;border-radius:8px" href="{{ url_for('delete_schedule', id=it.id) }}">Remove</a>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="5" class="hint">No items yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+        <p class="hint" style="margin-top:.6rem">“Next run” is computed server-side.</p>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="card" style="margin-top:16px">
-      <h2 style="margin-top:0">Scheduled Jobs</h2>
-      {% if jobs %}
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th><th>Action</th><th>Schedule</th><th>Next run</th><th class="right">Manage</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for j in jobs %}
-            <tr>
-              <td><code>{{ j.id }}</code></td>
-              <td>
-                {% if 'on' in j.name %}<span class="chip">ON</span>{% elif 'off' in j.name %}<span class="chip">OFF</span>{% else %}<span class="chip">OTHER</span>{% endif %}
-              </td>
-              <td>{{ j.trigger }}</td>
-              <td>{{ j.next_run_time.astimezone(tzinfo) if j.next_run_time else '—' }}</td>
-              <td class="right"><a class="btn danger" href="{{ url_for('delete_job', job_id=j.id) }}" onclick="return confirm('Delete job {{ j.id }}?')">Delete</a></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-        <div class="sub">No jobs yet.</div>
-      {% endif %}
-    </div>
+  <script>
+    // Tiny enhancement: live preview + preset fill, no persistence client-side.
+    const preset = document.getElementById('preset');
+    const msg = document.getElementById('message');
+    const type = document.getElementById('contentType');
+    const preview = document.getElementById('preview');
+    const txt = document.getElementById('previewTxt');
 
-    <footer>Server running in <code>{{ tz }}</code>. Customize by setting env vars: <code>LED_SIGN_TZ</code>, <code>LED_SIGN_JOBS_DB</code>.</footer>
-  </div>
+    const PRESETS = {{ presets_json|safe }}; // e.g. {"open":"OPEN","closed":"CLOSED","sale":"SALE — Today Only!"}
+
+    function update(){
+      const v = (msg.value || 'Welcome').trim();
+      txt.textContent = v;
+      preview.classList.toggle('scrolling', type.value === 'scrolling');
+    }
+    preset?.addEventListener('change', ()=>{ if(PRESETS[preset.value]) msg.value = PRESETS[preset.value]; update(); });
+    msg?.addEventListener('input', update);
+    type?.addEventListener('change', update);
+    update();
+  </script>
 </body>
 </html>
+
