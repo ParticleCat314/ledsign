@@ -6,49 +6,145 @@
 #include <vector>
 #include <memory>
 #include <filesystem>
+#include <sstream>
+#include "pixel-mapper.h"
 
+#define LEDROWS 16
+#define LEDCOLS 32
+#define LEDCHAIN 4
+#define LEDPARALLEL 1
+#define HARDWAREMAPPING "adafruit-hat"
+#define DISABLEHARDWAREPULSING true
 
 
 std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config) {
-  // Very lazy, we simply split the string by semicolons and create static text objects
-  // We also assume the input is well-formed and enclosed in quotes like:
-  // "Hello World";10;20;(255,0,0);END;"Goodbye!";5;25;(0,255,0);END
+  // Parse configuration for mixed static and scrolling objects
+  // Format: "TYPE;text;x;y;(r,g,b);[speed];END" where TYPE is STATIC or SCROLL
+  // Examples:
+  // "STATIC;Hello World;10;20;(255,0,0);END;SCROLL;Breaking News;15;(0,255,0);50;END"
   std::vector<std::shared_ptr<Renderable>> renderables;
   size_t pos = 0;
 
   while (pos < config.length()) {
-      // Find the next semicolon
-      size_t next_semicolon = config.find(';', pos);
-      if (next_semicolon == std::string::npos) {
-          break;
+      try {
+          // Get object type
+          size_t next_semicolon = config.find(';', pos);
+          if (next_semicolon == std::string::npos) {
+              break;
+          }
+          std::string type = config.substr(pos, next_semicolon - pos);
+          pos = next_semicolon + 1;
+
+          // Get text
+          next_semicolon = config.find(';', pos);
+          if (next_semicolon == std::string::npos) {
+              fprintf(stderr, "Invalid config format: missing text\n");
+              return {};
+          }
+          std::string text = config.substr(pos, next_semicolon - pos);
+          pos = next_semicolon + 1;
+
+          if (type == "STATIC") {
+              // Static text: x;y;(r,g,b);END
+              
+              // Get x position
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid static config: missing x position\n");
+                  return {};
+              }
+              size_t x = std::stoul(config.substr(pos, next_semicolon - pos));
+              pos = next_semicolon + 1;
+
+              // Get y position
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid static config: missing y position\n");
+                  return {};
+              }
+              size_t y = std::stoul(config.substr(pos, next_semicolon - pos));
+              pos = next_semicolon + 1;
+
+              // Get color
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid static config: missing color\n");
+                  return {};
+              }
+              std::string color_str = config.substr(pos, next_semicolon - pos);
+              pos = next_semicolon + 1;
+
+              // Parse color
+              int r, g, b;
+              std::stringstream ss(color_str);
+              char ignore;
+              ss >> ignore >> r >> ignore >> g >> ignore >> b >> ignore;
+              
+              if (ss.fail() || r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+                  fprintf(stderr, "Invalid color format: %s\n", color_str.c_str());
+                  return {};
+              }
+
+              renderables.push_back(std::make_shared<TextObject>(text, x, y, Color(r, g, b)));
+
+          } else if (type == "SCROLL") {
+              // Scrolling text: y;(r,g,b);speed;END
+              
+              // Get y position
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid scroll config: missing y position\n");
+                  return {};
+              }
+              size_t y = std::stoul(config.substr(pos, next_semicolon - pos));
+              pos = next_semicolon + 1;
+
+              // Get color
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid scroll config: missing color\n");
+                  return {};
+              }
+              std::string color_str = config.substr(pos, next_semicolon - pos);
+              pos = next_semicolon + 1;
+
+              // Parse color
+              int r, g, b;
+              std::stringstream ss(color_str);
+              char ignore;
+              ss >> ignore >> r >> ignore >> g >> ignore >> b >> ignore;
+              
+              if (ss.fail() || r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+                  fprintf(stderr, "Invalid color format: %s\n", color_str.c_str());
+                  return {};
+              }
+
+              // Get speed
+              next_semicolon = config.find(';', pos);
+              if (next_semicolon == std::string::npos) {
+                  fprintf(stderr, "Invalid scroll config: missing speed\n");
+                  return {};
+              }
+              size_t speed = std::stoul(config.substr(pos, next_semicolon - pos));
+              pos = next_semicolon + 1;
+
+              renderables.push_back(std::make_shared<TextScrollingObject>(text, y, speed, Color(r, g, b)));
+
+          } else {
+              fprintf(stderr, "Unknown object type: %s (expected STATIC or SCROLL)\n", type.c_str());
+              return {};
+          }
+
+          // Skip "END"
+          next_semicolon = config.find(';', pos);
+          if (next_semicolon != std::string::npos) {
+              pos = next_semicolon + 1;
+          }
+          
+      } catch (const std::exception& e) {
+          fprintf(stderr, "Error parsing config: %s\n", e.what());
+          return {};
       }
-      std::string text = config.substr(pos, next_semicolon - pos);
-      pos = next_semicolon + 1;
-
-      // Get x position
-      next_semicolon = config.find(';', pos);
-      size_t x = std::stoul(config.substr(pos, next_semicolon - pos));
-      pos = next_semicolon + 1;
-
-      // Get y position
-      next_semicolon = config.find(';', pos);
-      size_t y = std::stoul(config.substr(pos, next_semicolon - pos));
-      pos = next_semicolon + 1;
-
-      // Get color
-      next_semicolon = config.find(';', pos);
-      std::string color_str = config.substr(pos, next_semicolon - pos);
-      pos = next_semicolon + 1;
-
-      // Parse color
-      int r, g, b;
-      sscanf(color_str.c_str(), "(%d,%d,%d)", &r, &g, &b);
-
-      // Skip "END"
-      next_semicolon = config.find(';', pos);
-      pos = next_semicolon + 1;
-
-      renderables.push_back(std::make_shared<TextObject>(text, x, y, Color(r, g, b)));
   }
   return renderables;
 }
@@ -57,18 +153,41 @@ TextObject::TextObject(const std::string &t, size_t xpos, size_t ypos, const Col
     : text(t), x(xpos), y(ypos), color(c) {}
 
 void TextObject::Render(Sign &sign) {
-    sign.drawText(text, x, y, color);
+    // Assume the font is already set in the sign
+    sign.drawText(text, x, y, color, sign.current_font);
 }
 
-TextScrollingObject::TextScrollingObject(const std::string &t, size_t xpos, size_t ypos, size_t spd, const Color &c)
-    : text(t), x(xpos), y(ypos), speed(spd) {
+TextScrollingObject::TextScrollingObject(const std::string &t, size_t ypos, size_t spd, const Color &c)
+    : text(t), y(ypos), speed(spd) {
     color = c;
     type = RenderableType::SCROLLING;
+    current_x_offset = 64; // Start from right edge (assume 64px width for now)
 }
 
 
 void TextScrollingObject::Render(Sign &sign) {
-
+    // Calculate time delta for smooth animation
+    auto now = std::chrono::steady_clock::now();
+    auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update);
+    last_update = now;
+    
+    // Update scroll position based on speed (pixels per second)
+    float pixels_per_ms = static_cast<float>(speed) / 1000.0f;
+    current_x_offset -= static_cast<int>(delta.count() * pixels_per_ms);
+    
+    // Calculate text width to know when to reset
+    int text_width = 0;
+    for (char c : text) {
+        text_width += sign.current_font.CharacterWidth(c);
+    }
+    
+    // Reset to right side when text has completely scrolled off left
+    if (current_x_offset < -text_width) {
+        current_x_offset = static_cast<int>(sign.width);
+    }
+    
+    // Render the text at current position
+    sign.drawText(text, current_x_offset, y, color, sign.current_font);
 }
 
 
@@ -83,63 +202,99 @@ int Sign::Initialize() {
     rgb_matrix::RuntimeOptions runtime_opt;
 
     // I shouldn't hardcode these but oh well
-    // Magic numbers are fun!
-    matrix_options.hardware_mapping = "adafruit-hat";
-    matrix_options.rows = 16;
-    matrix_options.cols = 32;
-    matrix_options.chain_length = 4;
-    matrix_options.parallel = 1;
-    matrix_options.disable_hardware_pulsing = true;
+    matrix_options.hardware_mapping = HARDWAREMAPPING;
+    matrix_options.rows = LEDROWS;
+    matrix_options.cols = LEDCOLS;
+    matrix_options.chain_length = LEDCHAIN;
+    matrix_options.parallel = LEDPARALLEL;
+    matrix_options.disable_hardware_pulsing = DISABLEHARDWAREPULSING;
 
     // Load fonts
     // We look for the font file in the current directory and load all .bdf files
-    for (const auto &entry : std::filesystem::directory_iterator(".")) {
-        if (entry.path().extension() == ".bdf") {
-            std::string bdf_font_file = entry.path().string();
-            this->fonts.push_back(bdf_font_file);
+    try {
+        for (const auto &entry : std::filesystem::directory_iterator(".")) {
+            if (entry.path().extension() == ".bdf") {
+                std::string bdf_font_file = entry.path().string();
+                this->fonts.push_back(bdf_font_file);
+            }
         }
+    } catch (const std::filesystem::filesystem_error& ex) {
+        fprintf(stderr, "Failed to read directory for fonts: %s\n", ex.what());
+        return 2;
     }
 
     if (fonts.empty()) {
         fprintf(stderr, "No .bdf font files found in the current directory.\n");
-        return 1;
+        return 3;
     }
     
-    auto p = rgb_matrix::FindPixelMapper("U-mapper;Rotate:90;Rotate:90",4,1);
+    current_font = rgb_matrix::Font();
+    if (!current_font.LoadFont(this->fonts[0].c_str())) {
+        fprintf(stderr, "Failed to load default font: %s\n", this->fonts[0].c_str());
+        return 4;
+    }
+
+    auto p = rgb_matrix::FindPixelMapper("U-mapper;Rotate",4,1,"180");
+    if (!p) {
+        fprintf(stderr, "Failed to create pixel mapper\n");
+        return 5;
+    }
 
     this->canvas = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
-    this->canvas->ApplyPixelMapper(p);
+    if (!canvas) {
+        fprintf(stderr, "Failed to create RGB matrix. Check hardware configuration and permissions.\n");
+        return 6;
+    }
 
-    if (canvas == NULL) {
-        printf("This shouldn't happen lol");
-        return 1;
+    if (!this->canvas->ApplyPixelMapper(p)) {
+        fprintf(stderr, "Failed to apply pixel mapper to canvas\n");
+        delete canvas;
+        canvas = nullptr;
+        return 7;
     }
 
     return 0;
 }
 
 void Sign::setFont(const std::string &font_path) {
-    this->font = rgb_matrix::Font();
-    if (!this->font.LoadFont(font_path.c_str())) {
+    if (font_path.empty()) {
+        fprintf(stderr, "Font path is empty.\n");
+        return;
+    }
+
+    // Have we already loaded the font?
+    auto it = font_cache.find(font_path);
+    if (it != font_cache.end()) {
+        this->current_font = it->second;
+        return;
+    }
+
+    // Create temporary font for loading
+    rgb_matrix::Font temp_font;
+    if (!temp_font.LoadFont(font_path.c_str())) {
         fprintf(stderr, "Couldn't load font %s\n", font_path.c_str());
         return;
     }
+
+    // Cache and set the loaded font
+    font_cache[font_path] = temp_font;
+    this->current_font = temp_font;
 }
 
 void Sign::clear() {
+    if (!canvas) {
+        fprintf(stderr, "Canvas not initialized - cannot clear\n");
+        return;
+    }
     canvas->Clear();
 }
 
-void Sign::drawText(const std::string &text, size_t x, size_t y, const Color &color) {
-  this->font = rgb_matrix::Font();
-  // Load the first font because I'm lazy
-  // TODO: Font map
-
-  if (!this->font.LoadFont(this->fonts[0].c_str())) {
-      fprintf(stderr, "Couldn't load font %s\n", this->fonts[0].c_str());
-      return;
-  }
-  rgb_matrix::DrawText(canvas, this->font, x, y, rgb_matrix::Color(color.r, color.g, color.b), nullptr, text.c_str());
+void Sign::drawText(const std::string &text, size_t x, size_t y, const Color &color, const rgb_matrix::Font &font) {
+    if (!canvas) {
+        fprintf(stderr, "Canvas not initialized - cannot draw text\n");
+        return;
+    }
+    rgb_matrix::DrawText(canvas, font, x, y, rgb_matrix::Color(color.r, color.g, color.b), nullptr, text.c_str());
 }
 
 void Sign::handleInterrupt(bool interrupt) {
@@ -147,19 +302,54 @@ void Sign::handleInterrupt(bool interrupt) {
 }
 
 void Sign::setBrightness(int brightness) {
-    // Dummy implementation - in a real implementation this would set LED brightness
-    printf("Setting brightness to: %d\n", brightness);
-}
-
-void Sign::swapBuffers() {
-    // Later
+    if (!canvas) {
+        fprintf(stderr, "Canvas not initialized - cannot set brightness\n");
+        return;
+    }
+    if (brightness < 1 || brightness > 100) {
+        fprintf(stderr, "Invalid brightness value: %d (expected 1-100)\n", brightness);
+        return;
+    }
+    canvas->SetBrightness(brightness);
 }
 
 void Sign::render() {
-    for (const auto &renderable : renderables) {
-        renderable->Render(*this);
+    // If we have animated objects, start continuous rendering
+    if (hasAnimatedObjects()) {
+        // Continuous render loop for animations
+        while (!interrupt_received) {
+            renderFrame();
+            usleep(16667); // ~60 FPS (16.67ms per frame)
+        }
+    } else {
+        // Single render for static content
+        renderFrame();
     }
 }
 
+void Sign::renderFrame() {
+    // Clear the canvas
+    clear();
+    
+    // Update timing
+    auto now = std::chrono::steady_clock::now();
+    last_render_time = now;
+    
+    // Render all objects
+    for (const auto &renderable : renderables) {
+        renderable->Render(*this);
+    }
+    
+    // The RGB Matrix library handles double buffering automatically,
+    // but we can add an explicit swap if needed in the future
+}
 
-
+bool Sign::hasAnimatedObjects() const {
+    for (const auto &renderable : renderables) {
+        if (renderable->type == RenderableType::SCROLLING || 
+            renderable->type == RenderableType::ANIMATED) {
+            return true;
+        }
+    }
+    return false;
+}

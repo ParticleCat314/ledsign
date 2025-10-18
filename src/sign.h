@@ -5,8 +5,10 @@
 #include <vector>
 #include <stdint.h>
 #include <memory>
+#include <chrono>
 #include "graphics.h"
 #include "led-matrix.h"
+#include <unordered_map>
 
 using namespace rgb_matrix;
 struct Sign;
@@ -50,14 +52,16 @@ public:
 struct TextScrollingObject : public Renderable {
 public:
     std::string text;
-    size_t x;
     size_t y;
-    size_t speed; // Speed of scrolling
+    size_t speed; // Pixels per second
     Color color = Color(255, 255, 255); // Default white color
+    
+    // Animation state
+    mutable int current_x_offset = 0;
+    mutable std::chrono::steady_clock::time_point last_update = std::chrono::steady_clock::now();
     
     TextScrollingObject(
       const std::string &t,
-      size_t xpos,
       size_t ypos,
       size_t spd,
       const Color &c = Color(255, 255, 255)
@@ -73,10 +77,19 @@ struct Sign {
     volatile bool interrupt_received = false;
     std::vector<std::shared_ptr<Renderable>> renderables;
     
+
+    // Available fonts as file paths
     std::vector<std::string> fonts;
-    rgb_matrix::Font font;
+
+    // Font cache
+    std::unordered_map<std::string, rgb_matrix::Font> font_cache;
+
+    rgb_matrix::Font current_font;
 
     RGBMatrix *canvas;
+    
+    // Animation timing
+    std::chrono::steady_clock::time_point last_render_time = std::chrono::steady_clock::now();
     
 
 public:
@@ -89,22 +102,30 @@ public:
 
     void setFont(const std::string &font_path);
 
-    // Clear the sign display. i.e. set all pixels to "black".
     void clear();
 
-    void drawText(const std::string &text, size_t x, size_t y, const Color &color);
+    void drawText(const std::string &text, size_t x, size_t y, const Color &color, const rgb_matrix::Font &font);
 
     void setBrightness(int brightness);
 
     void handleInterrupt(bool interrupt);
 
-    void swapBuffers();
-
     void render();
+    
+    // Render a single frame (for animation loops)
+    void renderFrame();
+    
+    // Check if any renderables need animation updates
+    bool hasAnimatedObjects() const;
 
     void render(const std::string &config) {
       this->renderables = parseSignConfig(config);
       this->render();
     }
+
+    ~Sign() {
+        if (canvas) delete canvas;
+    }
+
 };
 
