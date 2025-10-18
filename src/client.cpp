@@ -21,11 +21,8 @@ bool write_all(int fd, const std::string& s) {
 int main(int argc, char** argv) {
     std::string cmd = argv[1];
     std::string line;
-    if (cmd == "SCROLL") {
-        line = cmd + argv[2] + "\n";
-        printf("Sending command: %s", line.c_str());
-    }
-    else if (cmd == "CLEAR") {
+
+    if (cmd == "CLEAR") {
         line = "CLEAR\n";
         printf("Sending command: %s", line.c_str());
     }

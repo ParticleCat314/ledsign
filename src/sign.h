@@ -65,6 +65,7 @@ public:
     void Render(Sign &sign) override;
 };
 
+std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config);
 
 struct Sign {
     size_t width = 64;
@@ -73,6 +74,7 @@ struct Sign {
     std::vector<std::shared_ptr<Renderable>> renderables;
     
     std::vector<std::string> fonts;
+    rgb_matrix::Font font;
 
     RGBMatrix *canvas;
     
@@ -84,6 +86,8 @@ public:
 
     // Initialize the sign hardware. Must call before use.
     int Initialize();
+
+    void setFont(const std::string &font_path);
 
     // Clear the sign display. i.e. set all pixels to "black".
     void clear();
@@ -97,7 +101,10 @@ public:
     void swapBuffers();
 
     void render();
+
+    void render(const std::string &config) {
+      this->renderables = parseSignConfig(config);
+      this->render();
+    }
 };
 
-
-std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config);

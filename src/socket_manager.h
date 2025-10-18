@@ -138,7 +138,7 @@ int run_socket_server(Sign& sign) {
             if (t.joinable())
                 t.join();
             sign.handleInterrupt(false);
-            sign.render();
+            sign.render(msg);
         }
 
         else {
