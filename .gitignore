@@ -1,0 +1,6 @@
+rpi-rgb-led-matrix/
+web/.venv/
+__pycache__/
+*.pyc
+.env
+
