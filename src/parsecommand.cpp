@@ -3,24 +3,30 @@
 #include <cctype>
 #include <sstream>
 
-TextObject::TextObject(const std::string &t, size_t xpos, size_t ypos, const rgb_matrix::Color &c)
-    : text(t), x(xpos), y(ypos), color(c) {
+TextObject::TextObject(const std::string &t, size_t xpos, size_t ypos, const rgb_matrix::Color &c, const std::string &font)
+    : text(t), x(xpos), y(ypos), color(c), font_name(font) {
     type = RenderableType::STATIC;
 }
 
 void TextObject::Render(Sign &sign) {
-    // Assume the font is already set in the sign
+    // Set the font for this text object
+    std::string font_path = "./rpi-rgb-led-matrix/fonts/" + font_name + ".bdf";
+    sign.setFont(font_path);
     sign.drawText(text, x, y, color, sign.current_font);
 }
 
-TextScrollingObject::TextScrollingObject(const std::string &t, size_t ypos, size_t spd, const rgb_matrix::Color &c)
-    : text(t), y(ypos), speed(spd), color(c) {
+TextScrollingObject::TextScrollingObject(const std::string &t, size_t ypos, size_t spd, const rgb_matrix::Color &c, const std::string &font)
+    : text(t), y(ypos), speed(spd), color(c), font_name(font) {
     type = RenderableType::SCROLLING;
     current_x_offset = LedSignConstants::DEFAULT_DISPLAY_WIDTH; // Start from right edge
     last_update = std::chrono::steady_clock::now();
 }
 
 void TextScrollingObject::Render(Sign &sign) {
+    // Set the font for this text object
+    std::string font_path = "./rpi-rgb-led-matrix/fonts/" + font_name + ".bdf";
+    sign.setFont(font_path);
+    
     // Calculate time delta for smooth animation
     auto now = std::chrono::steady_clock::now();
     auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update);
@@ -115,9 +121,9 @@ bool validateEndToken(const std::string& config, size_t& pos) {
 
 std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config) {
     // Parse configuration for mixed static and scrolling objects
-    // Format: "TYPE;text;x;y;(r,g,b);[speed];END" where TYPE is STATIC or SCROLL
+    // Format: "TYPE;text;x;y;(r,g,b);[font];[speed];END" where TYPE is STATIC or SCROLL
     // Examples:
-    // "STATIC;Hello World;10;20;(255,0,0);END;SCROLL;Breaking News;15;(0,255,0);50;END"
+    // "STATIC;Hello World;10;20;(255,0,0);7x13;END;SCROLL;Breaking News;15;(0,255,0);50;6x10;END"
 
     std::vector<std::shared_ptr<Renderable>> renderables;
     size_t pos = 0;
@@ -139,7 +145,7 @@ std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &conf
         }
 
         if (type == "STATIC") {
-            // Static text: x;y;(r,g,b);END
+            // Static text: x;y;(r,g,b);font;END
             
             // Get x position
             std::string x_str;
@@ -183,16 +189,34 @@ std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &conf
                 return {};
             }
 
+            // Get font (optional, defaults to 6x10)
+            std::string font_name = "6x10"; // Default font
+            std::string font_str;
+            if (extractField(config, pos, font_str)) {
+                if (!font_str.empty()) {
+                    font_name = font_str;
+                }
+            } else {
+                // If extractField failed, we might be at END token, rewind pos
+                // Try to validate END token directly
+                if (pos < config.length() && config.substr(pos, 3) == "END") {
+                    // We're at END, font is optional so use default
+                } else {
+                    fprintf(stderr, "Invalid static config: missing or malformed font/END token\n");
+                    return {};
+                }
+            }
+
             // Validate END token
             if (!validateEndToken(config, pos)) {
                 fprintf(stderr, "Invalid static config: missing or malformed END token\n");
                 return {};
             }
 
-            renderables.push_back(std::make_shared<TextObject>(text, x, y, rgb_matrix::Color(r, g, b)));
+            renderables.push_back(std::make_shared<TextObject>(text, x, y, rgb_matrix::Color(r, g, b), font_name));
 
         } else if (type == "SCROLL") {
-            // Scrolling text: y;(r,g,b);speed;END
+            // Scrolling text: y;(r,g,b);speed;font;END
             
             // Get y position
             std::string y_str;
@@ -236,13 +260,31 @@ std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &conf
                 return {};
             }
 
+            // Get font (optional, defaults to 6x10)
+            std::string font_name = "6x10"; // Default font
+            std::string font_str;
+            if (extractField(config, pos, font_str)) {
+                if (!font_str.empty()) {
+                    font_name = font_str;
+                }
+            } else {
+                // If extractField failed, we might be at END token, rewind pos
+                // Try to validate END token directly
+                if (pos < config.length() && config.substr(pos, 3) == "END") {
+                    // We're at END, font is optional so use default
+                } else {
+                    fprintf(stderr, "Invalid scroll config: missing or malformed font/END token\n");
+                    return {};
+                }
+            }
+
             // Validate END token
             if (!validateEndToken(config, pos)) {
                 fprintf(stderr, "Invalid scroll config: missing or malformed END token\n");
                 return {};
             }
 
-            renderables.push_back(std::make_shared<TextScrollingObject>(text, y, speed, rgb_matrix::Color(r, g, b)));
+            renderables.push_back(std::make_shared<TextScrollingObject>(text, y, speed, rgb_matrix::Color(r, g, b), font_name));
 
         } else {
             fprintf(stderr, "Unknown object type: '%s' (expected STATIC or SCROLL)\n", type.c_str());

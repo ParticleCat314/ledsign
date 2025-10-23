@@ -72,6 +72,7 @@ def parse_form(form):
             x = int(form.get(f'text_x_{i}', 0))
             y = int(form.get(f'text_y_{i}', 10))
             color_hex = form.get(f'text_color_{i}', "#95ff00").lstrip('#')
+            font = form.get(f'text_font_{i}', '6x10')
             
             # Validate color format
             if len(color_hex) != 6:
@@ -86,6 +87,7 @@ def parse_form(form):
                 'x': x,
                 'y': y,
                 'color': color,
+                'font': font,
             }
             
             if element_type == 'scrolling':
@@ -96,6 +98,7 @@ def parse_form(form):
                     'x': x,
                     'y': y,
                     'color': color,
+                    'font': font,
                     'speed': speed,
                 }
 

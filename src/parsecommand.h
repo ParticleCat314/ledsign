@@ -35,12 +35,14 @@ public:
     size_t x;
     size_t y;
     rgb_matrix::Color color = rgb_matrix::Color(255, 255, 255); // Default white color
+    std::string font_name = "6x10"; // Default font size
 
     TextObject(
         const std::string &t,
         size_t xpos,
         size_t ypos,
-        const rgb_matrix::Color &c = rgb_matrix::Color(255, 255, 255)
+        const rgb_matrix::Color &c = rgb_matrix::Color(255, 255, 255),
+        const std::string &font = "6x10"
     );
 
     void Render(Sign &sign) override;
@@ -55,6 +57,7 @@ public:
     size_t y;
     size_t speed; // Pixels per second
     rgb_matrix::Color color = rgb_matrix::Color(255, 255, 255); // Default white color
+    std::string font_name = "6x10"; // Default font size
     
     // Animation state - not mutable anymore, will be handled properly
     int current_x_offset = 0;
@@ -64,7 +67,8 @@ public:
         const std::string &t,
         size_t ypos,
         size_t spd,
-        const rgb_matrix::Color &c = rgb_matrix::Color(255, 255, 255)
+        const rgb_matrix::Color &c = rgb_matrix::Color(255, 255, 255),
+        const std::string &font = "6x10"
     );
     
     void Render(Sign &sign) override;
@@ -77,8 +81,8 @@ bool validateEndToken(const std::string& config, size_t& pos);
 
 /**
  * Parse sign configuration string into renderable objects.
- * Format: "TYPE;text;x;y;(r,g,b);[speed];END" where TYPE is STATIC or SCROLL
+ * Format: "TYPE;text;x;y;(r,g,b);[font];[speed];END" where TYPE is STATIC or SCROLL
  * Examples:
- * "STATIC;Hello World;10;20;(255,0,0);END;SCROLL;Breaking News;15;(0,255,0);50;END"
+ * "STATIC;Hello World;10;20;(255,0,0);7x13;END;SCROLL;Breaking News;15;(0,255,0);50;6x10;END"
  */
 std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config);

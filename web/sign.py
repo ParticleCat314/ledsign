@@ -56,16 +56,16 @@ def clear_sign():
     return send_command("CLEAR")
 
 
-def set_text(text, x=0, y=10, color=(255, 255, 0)):
-    """Set text on the LED sign with position and color."""
+def set_text(text, x=0, y=10, color=(255, 255, 0), font="6x10"):
+    """Set text on the LED sign with position, color, and font."""
     r, g, b = color
-    command = f"SETSTATIC;{text};{x};{y};{r},{g},{b};END;"
+    command = f"SETSTATIC;{text};{x};{y};{r},{g},{b};{font};END;"
     return send_command(command)
 
 
-def set(text, x=0, y=10, color=(255, 255, 0)):
+def set(text, x=0, y=10, color=(255, 255, 0), font="6x10"):
     """Alias for set_text for backward compatibility."""
-    return set_text(text, x, y, color)
+    return set_text(text, x, y, color, font)
 
 
 
@@ -107,9 +107,10 @@ def execute_scheduled_item(schedule_id, name, **kwargs):
             x = item.get('x', 0)
             y = item.get('y', 10)
             color = tuple(item.get('color', [255, 255, 0]))
-            print(f"Setting text on LED sign: '{text}' at ({x},{y}) with color {color}")
+            font = item.get('font', '6x10')
+            print(f"Setting text on LED sign: '{text}' at ({x},{y}) with color {color} and font {font}")
 
-            command += f"STATIC;{text};{x};{y};({color[0]},{color[1]},{color[2]});END;"
+            command += f"STATIC;{text};{x};{y};({color[0]},{color[1]},{color[2]});{font};END;"
 
         if item.get('type') == 'scrolling':
             text = item.get('content', name)
@@ -117,8 +118,9 @@ def execute_scheduled_item(schedule_id, name, **kwargs):
             y = item.get('y', 10)
             color = tuple(item.get('color', [255, 255, 0]))
             speed = item.get('speed', 70)
-            print(f"Setting scrolling text on LED sign: '{text}' at ({x},{y}) with color {color} and speed {speed}")
-            command += f"SCROLL;{text};{x};{y};({color[0]},{color[1]},{color[2]});{speed};END;"
+            font = item.get('font', '6x10')
+            print(f"Setting scrolling text on LED sign: '{text}' at ({x},{y}) with color {color}, speed {speed}, and font {font}")
+            command += f"SCROLL;{text};{y};({color[0]},{color[1]},{color[2]});{speed};{font};END;"
 
     response = send_command(command)
     print(f"LED sign response: {response}")
