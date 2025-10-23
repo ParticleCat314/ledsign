@@ -225,7 +225,9 @@ int Sign::Initialize() {
         return 4;
     }
 
-    auto p = rgb_matrix::FindPixelMapper("U-mapper;Rotate",4,1,"180");
+    auto p = rgb_matrix::FindPixelMapper("U-mapper",4,1);
+    auto p2 = rgb_matrix::FindPixelMapper("Rotate",4,1,"180");
+
     if (!p) {
         fprintf(stderr, "Failed to create pixel mapper\n");
         return 5;
@@ -243,7 +245,12 @@ int Sign::Initialize() {
         canvas = nullptr;
         return 7;
     }
-
+    if (!this->canvas->ApplyPixelMapper(p2)) {
+        fprintf(stderr, "Failed to apply pixel mapper 2 to canvas\n");
+        delete canvas;
+        canvas = nullptr;
+        return 7;
+    }
     return 0;
 }
 
