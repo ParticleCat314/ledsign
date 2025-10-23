@@ -37,8 +37,8 @@ struct Sign {
     // Available fonts as file paths
     std::vector<std::string> fonts;
 
-    // Font cache
-    std::unordered_map<std::string, rgb_matrix::Font> font_cache;
+    // Font cache - using unique_ptr to avoid copying Font objects
+    std::unordered_map<std::string, std::unique_ptr<rgb_matrix::Font>> font_cache;
 
     rgb_matrix::Font current_font;
 

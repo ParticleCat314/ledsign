@@ -4,6 +4,8 @@
 #include <sstream>
 #include <cctype>
 #include <unistd.h>
+#include <memory>
+#include <filesystem>
 
 
 
@@ -78,23 +80,31 @@ void Sign::setFont(const std::string &font_path) {
         return;
     }
 
-    // Have we already loaded the font?
-    auto it = font_cache.find(font_path);
-    if (it != font_cache.end()) {
-        this->current_font = it->second;
+    // Extract font name from path for cache lookup
+    std::filesystem::path path(font_path);
+    std::string font_name = path.stem().string();
+    
+    // Try to get from cache first
+    const rgb_matrix::Font* cached_font = getFont(font_name);
+    if (cached_font) {
+        current_font = *cached_font;
         return;
     }
 
-    // Create temporary font for loading
+    // If not in cache, try to load it directly (fallback)
     rgb_matrix::Font temp_font;
     if (!temp_font.LoadFont(font_path.c_str())) {
         fprintf(stderr, "Couldn't load font %s\n", font_path.c_str());
         return;
     }
 
-    // Cache and set the loaded font
-    font_cache[font_path] = temp_font;
-    this->current_font = temp_font;
+    // Cache the font and set as current
+    auto font_ptr = std::make_unique<rgb_matrix::Font>();
+    if (font_ptr->LoadFont(font_path.c_str())) {
+        current_font = *font_ptr;
+        font_cache[font_name] = std::move(font_ptr);
+        fonts.push_back(font_path);
+    }
 }
 
 void Sign::clear() {
@@ -179,13 +189,13 @@ void Sign::render(const std::string &config) {
 const rgb_matrix::Font* Sign::getFont(const std::string &font_name) const {
     auto it = font_cache.find(font_name);
     if (it != font_cache.end()) {
-        return &it->second;
+        return it->second.get();
     }
     return nullptr;
 }
 
 bool Sign::loadAllFonts() {
-    const std::string font_dir = ".";
+    const std::string font_dir = "./rpi-rgb-led-matrix/fonts/";
     
     // Clear existing cache
     font_cache.clear();
@@ -197,10 +207,10 @@ bool Sign::loadAllFonts() {
                 std::string font_path = entry.path().string();
                 std::string font_name = entry.path().stem().string(); // filename without extension
                 
-                // Load the font
-                rgb_matrix::Font font;
-                if (font.LoadFont(font_path.c_str())) {
-                    font_cache[font_name] = font;
+                // Create a new font object
+                auto font = std::make_unique<rgb_matrix::Font>();
+                if (font->LoadFont(font_path.c_str())) {
+                    font_cache[font_name] = std::move(font);
                     fonts.push_back(font_path);
                     printf("Loaded font: %s -> %s\n", font_name.c_str(), font_path.c_str());
                 } else {
