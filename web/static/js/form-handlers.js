@@ -19,17 +19,24 @@ function initializeFormHandlers() {
  * Handle template selection changes
  */
 function setupTemplateSelection() {
-    const templateSelect = document.getElementById('template_id');
+    const templateSelect = document.getElementById('schedule_template_id');
     const customFields = document.getElementById('custom_text_fields');
     
     if (templateSelect && customFields) {
-        templateSelect.addEventListener('change', function() {
-            if (this.value === '') {
+        // Set initial state based on current selection
+        function updateCustomFieldsVisibility() {
+            if (templateSelect.value === '') {
                 customFields.style.display = 'block';
             } else {
                 customFields.style.display = 'none';
             }
-        });
+        }
+        
+        // Set initial state
+        updateCustomFieldsVisibility();
+        
+        // Add event listener for changes
+        templateSelect.addEventListener('change', updateCustomFieldsVisibility);
     }
 }
 

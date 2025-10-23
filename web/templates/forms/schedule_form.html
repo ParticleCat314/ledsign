@@ -38,8 +38,8 @@
             </div>
             <div>
                 <div class="form-group">
-                    <label for="template_id">Use Template (optional):</label>
-                    <select id="template_id" name="template_id">
+                    <label for="schedule_template_id">Use Template (optional):</label>
+                    <select id="schedule_template_id" name="template_id">
                         <option value="">-- Create Custom --</option>
                         {% for template in templates %}
                             <option value="{{ template.id }}">{{ template.name }}</option>

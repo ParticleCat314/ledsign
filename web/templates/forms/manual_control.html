@@ -12,8 +12,8 @@
         
         <!-- Template Selection (hidden by default) -->
         <div id="template_selection" class="form-group" style="display: none;">
-            <label for="template_id">Select Template:</label>
-            <select id="template_id" name="template_id">
+            <label for="manual_template_id">Select Template:</label>
+            <select id="manual_template_id" name="template_id">
                 <option value="">-- Select a Template --</option>
                 {% if templates %}
                     {% for template in templates %}
@@ -58,12 +58,12 @@ function toggleManualControlMode() {
         templateSelection.style.display = 'block';
         customFields.style.display = 'none';
         textInput.removeAttribute('required');
-        document.getElementById('template_id').setAttribute('required', 'required');
+        document.getElementById('manual_template_id').setAttribute('required', 'required');
     } else {
         templateSelection.style.display = 'none';
         customFields.style.display = 'block';
         textInput.setAttribute('required', 'required');
-        document.getElementById('template_id').removeAttribute('required');
+        document.getElementById('manual_template_id').removeAttribute('required');
     }
 }
 </script>
