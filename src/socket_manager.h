@@ -133,7 +133,10 @@ int run_socket_server(Sign& sign) {
             if (t.joinable())
                 t.join();
             sign.handleInterrupt(false);
-            sign.render(msg);
+            t = std::thread([&sign, msg]() {
+                sign.render(msg);
+            });
+            reply = "OK setting\n";
         }
 
         else {

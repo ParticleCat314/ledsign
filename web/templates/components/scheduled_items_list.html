@@ -5,7 +5,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>Label</th>
+                    <th>Name</th>
                     <th>Scheduled Time</th>
                     <th>Recurring</th>
                     <th>Weekdays</th>
@@ -16,7 +16,7 @@
             <tbody>
                 {% for item in scheduled_items %}
                     <tr>
-                        <td>{{ item.label }}</td>
+                        <td>{{ item.name }}</td>
                         <td>
                             {% if item.is_recurring and item.recurring_time %}
                                 {{ item.recurring_time }}
@@ -36,7 +36,7 @@
                             {% if item.template_id %}
                                 {% for template in templates %}
                                     {% if template.id == item.template_id %}
-                                        {{ template.label }}
+                                        {{ template.name }}
                                         <small>({{ template.template_type }})</small>
                                     {% endif %}
                                 {% endfor %}

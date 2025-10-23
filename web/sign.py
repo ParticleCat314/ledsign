@@ -59,7 +59,7 @@ def clear_sign():
 def set_text(text, x=0, y=10, color=(255, 255, 0)):
     """Set text on the LED sign with position and color."""
     r, g, b = color
-    command = f"SET;{text};{x};{y};{r},{g},{b}"
+    command = f"SETSTATIC;{text};{x};{y};{r},{g},{b};END;"
     return send_command(command)
 
 
@@ -97,7 +97,8 @@ def execute_scheduled_item(schedule_id, name, **kwargs):
         return
 
     sign_name = template_data.get('name', 'LED Sign template?')
-    sign_config = template_data.get('text', {})
+    sign_config = template_data.get('items', {})
+    command = "SET"
 
     for item in sign_config:
         print(f"Processing item: {item}")
@@ -107,9 +108,19 @@ def execute_scheduled_item(schedule_id, name, **kwargs):
             y = item.get('y', 10)
             color = tuple(item.get('color', [255, 255, 0]))
             print(f"Setting text on LED sign: '{text}' at ({x},{y}) with color {color}")
-            set_text(text=text, x=x, y=y, color=color)
 
+            command += f"STATIC;{text};{x};{y};({color[0]},{color[1]},{color[2]});END;"
 
+        if item.get('type') == 'scrolling':
+            text = item.get('content', name)
+            x = item.get('x', 0)
+            y = item.get('y', 10)
+            color = tuple(item.get('color', [255, 255, 0]))
+            speed = item.get('speed', 1)
+            print(f"Setting scrolling text on LED sign: '{text}' at ({x},{y}) with color {color} and speed {speed}")
+            command += f"SCROLL;{text};{x};{y};({color[0]},{color[1]},{color[2]});{speed};END;"
 
+    response = send_command(command)
+    print(f"LED sign response: {response}")
 
 

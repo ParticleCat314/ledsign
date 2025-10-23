@@ -6,7 +6,7 @@
             <div>
                 <div class="form-group">
                     <label for="schedule_label">Label:</label>
-                    <input type="text" id="schedule_label" name="label" required>
+                    <input type="text" id="schedule_label" name="schedule_name" required>
                 </div>
                 <div id="datetime_field" class="form-group">
                     <label for="scheduled_datetime">Schedule Date & Time:</label>
@@ -42,7 +42,7 @@
                     <select id="template_id" name="template_id">
                         <option value="">-- Create Custom --</option>
                         {% for template in templates %}
-                            <option value="{{ template.id }}">{{ template.label }}</option>
+                            <option value="{{ template.id }}">{{ template.name }}</option>
                         {% endfor %}
                     </select>
                 </div>

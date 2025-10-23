@@ -31,6 +31,7 @@ def with_conn(fn):
     def wrapper(*args, **kwargs):
         conn = sqlite3.connect(DB_PATH, timeout=10, isolation_level=None)  # autocommit
         try:
+            conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.row_factory = sqlite3.Row
@@ -81,6 +82,14 @@ def init_db(conn):
         """
     )
 
+
+@with_conn
+def purge_scheduled_items(conn):
+    """Reset the database by dropping all tables."""
+    conn.execute("DROP TABLE IF EXISTS last_run;")
+    conn.execute("DROP TABLE IF EXISTS schedule;")
+    conn.execute("DROP TABLE IF EXISTS templates;")
+    init_db()
 
 # Schedule Management Functions
 @with_conn

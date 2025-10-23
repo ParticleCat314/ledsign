@@ -67,7 +67,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>Label</th>
+                    <th>Name</th>
                     <th>Type</th>
                     <th>Payload Preview</th>
                     <th>Actions</th>
@@ -76,7 +76,7 @@
             <tbody>
                 {% for template in templates %}
                     <tr>
-                        <td>{{ template.label }}</td>
+                        <td>{{ template.name }}</td>
                         <td><span class="badge">{{ template.template_type }}</span></td>
                         <td>
                             <code style="font-size: 0.8em;">
