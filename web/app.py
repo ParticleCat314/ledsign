@@ -134,9 +134,48 @@ def route_purge_schedule():
 def route_manual_control():
     """Manually set text on the sign"""
     try:
-        text, x, y, color = parseManualControlForm(request.form)
-        sign.set_static_text(text, x, y, color)
-        flash('Text set on sign successfully', 'success')
+        form_data = parseManualControlForm(request.form)
+        
+        if form_data['mode'] == 'template':
+            # Execute template
+            template = get_template(form_data['template_id'])
+            if not template:
+                flash('Template not found', 'error')
+                return redirect(url_for('index'))
+            
+            template_data = parseJSONPayload(template['payload'])
+            if not template_data:
+                flash('Invalid template payload', 'error')
+                return redirect(url_for('index'))
+            
+            # Execute template items
+            sign_config = template_data.get('items', [])
+            command = "SET"
+            
+            for item in sign_config:
+                if item.get('type') == 'static':
+                    text = item.get('content', '')
+                    x = item.get('x', 0)
+                    y = item.get('y', 10)
+                    color = tuple(item.get('color', [255, 255, 0]))
+                    font = item.get('font', '6x10')
+                    command += f"STATIC;{text};{x};{y};({color[0]},{color[1]},{color[2]});{font};END;"
+                elif item.get('type') == 'scrolling':
+                    text = item.get('content', '')
+                    x = item.get('x', 0)
+                    y = item.get('y', 10)
+                    color = tuple(item.get('color', [255, 255, 0]))
+                    speed = item.get('speed', 70)
+                    font = item.get('font', '6x10')
+                    command += f"SCROLL;{text};{y};({color[0]},{color[1]},{color[2]});{speed};{font};END;"
+            
+            response = sign.send_command(command)
+            flash(f'Template "{template["name"]}" executed successfully', 'success')
+        else:
+            # Custom text mode
+            sign.set_text(form_data['text'], form_data['x'], form_data['y'], form_data['color'])
+            flash('Text set on sign successfully', 'success')
+            
     except Exception as e:
         flash(f'Error setting text on sign: {str(e)}', 'error')
     

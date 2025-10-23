@@ -2,17 +2,30 @@
 
 def parseManualControlForm(form):
     """Parse and validate manual control form data"""
-    text = form.get('text', '').strip()
-    x = int(form.get('x', 0))
-    y = int(form.get('y', 10))
-    color_hex = form.get('color', '#ffff00').lstrip('#')
+    control_mode = form.get('control_mode', 'custom')
     
-    if len(color_hex) != 6:
-        raise ValueError("Invalid color format")
+    if control_mode == 'template':
+        # Template mode - return template ID
+        template_id = form.get('template_id', '').strip()
+        if not template_id:
+            raise ValueError("Please select a template")
+        return {'mode': 'template', 'template_id': int(template_id)}
+    else:
+        # Custom mode - return custom text parameters
+        text = form.get('text', '').strip()
+        if not text:
+            raise ValueError("Text cannot be empty")
+            
+        x = int(form.get('x', 0))
+        y = int(form.get('y', 10))
+        color_hex = form.get('color', '#ffff00').lstrip('#')
         
-    color = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
-    
-    return text, x, y, color
+        if len(color_hex) != 6:
+            raise ValueError("Invalid color format")
+            
+        color = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
+        
+        return {'mode': 'custom', 'text': text, 'x': x, 'y': y, 'color': color}
 
 def parseTemplateForm(form):
     """Parse and validate template form data"""

@@ -3,21 +3,67 @@
     <h2>Manual Sign Control</h2>
     <form method="POST" action="/manual_control">
         <div class="form-group">
-            <label for="text">Text:</label>
-            <input type="text" id="text" name="text" required>
+            <label for="control_mode">Control Mode:</label>
+            <select id="control_mode" name="control_mode" onchange="toggleManualControlMode()" required>
+                <option value="custom">Custom Text</option>
+                <option value="template">Use Template</option>
+            </select>
         </div>
-        <div class="form-group">
-            <label for="x">X Position:</label>
-            <input type="number" id="x" name="x" value="0" min="0">
+        
+        <!-- Template Selection (hidden by default) -->
+        <div id="template_selection" class="form-group" style="display: none;">
+            <label for="template_id">Select Template:</label>
+            <select id="template_id" name="template_id">
+                <option value="">-- Select a Template --</option>
+                {% if templates %}
+                    {% for template in templates %}
+                        <option value="{{ template.id }}">{{ template.name }}</option>
+                    {% endfor %}
+                {% endif %}
+            </select>
         </div>
-        <div class="form-group">
-            <label for="y">Y Position:</label>
-            <input type="number" id="y" name="y" value="10" min="0">
+        
+        <!-- Custom Text Fields (shown by default) -->
+        <div id="custom_fields">
+            <div class="form-group">
+                <label for="text">Text:</label>
+                <input type="text" id="text" name="text">
+            </div>
+            <div class="form-group">
+                <label for="x">X Position:</label>
+                <input type="number" id="x" name="x" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label for="y">Y Position:</label>
+                <input type="number" id="y" name="y" value="10" min="0">
+            </div>
+            <div class="form-group">
+                <label for="color">Color (RGB):</label>
+                <input type="color" id="color" name="color" value="#ff0000">
+            </div>
         </div>
-        <div class="form-group">
-            <label for="color">Color (RGB):</label>
-            <input type="color" id="color" name="color" value="#ff0000">
-        </div>
+        
         <button type="submit" class="btn btn-success">Update Sign Now</button>
     </form>
 </div>
+
+<script>
+function toggleManualControlMode() {
+    const controlMode = document.getElementById('control_mode').value;
+    const templateSelection = document.getElementById('template_selection');
+    const customFields = document.getElementById('custom_fields');
+    const textInput = document.getElementById('text');
+    
+    if (controlMode === 'template') {
+        templateSelection.style.display = 'block';
+        customFields.style.display = 'none';
+        textInput.removeAttribute('required');
+        document.getElementById('template_id').setAttribute('required', 'required');
+    } else {
+        templateSelection.style.display = 'none';
+        customFields.style.display = 'block';
+        textInput.setAttribute('required', 'required');
+        document.getElementById('template_id').removeAttribute('required');
+    }
+}
+</script>
