@@ -31,28 +31,18 @@ SignError Sign::Initialize() {
     matrix_options.parallel = LedSignConstants::LED_PARALLEL;
     matrix_options.disable_hardware_pulsing = LedSignConstants::DISABLE_HARDWARE_PULSING;
 
-    // Load fonts
-    // We look for the font file in the current directory and load all .bdf files
-    try {
-        for (const auto &entry : std::filesystem::directory_iterator(".")) {
-            if (entry.path().extension() == ".bdf") {
-                std::string bdf_font_file = entry.path().string();
-                this->fonts.push_back(bdf_font_file);
-            }
-        }
-    } catch (const std::filesystem::filesystem_error& ex) {
-        fprintf(stderr, "Failed to read directory for fonts: %s\n", ex.what());
-        return SignError::FONT_DIRECTORY_ERROR;
+    // Load all fonts into cache
+    if (!loadAllFonts()) {
+        fprintf(stderr, "Failed to load fonts\n");
+        return SignError::FONT_LOAD_ERROR;
     }
 
-    if (fonts.empty()) {
-        fprintf(stderr, "No .bdf font files found in the current directory.\n");
-        return SignError::NO_FONTS_FOUND;
-    }
-    
-    current_font = rgb_matrix::Font();
-    if (!current_font.LoadFont(this->fonts[0].c_str())) {
-        fprintf(stderr, "Failed to load default font: %s\n", this->fonts[0].c_str());
+    // Set default font
+    const rgb_matrix::Font* default_font = getFont("6x10");
+    if (default_font) {
+        current_font = *default_font;
+    } else {
+        fprintf(stderr, "Default font 6x10 not found\n");
         return SignError::FONT_LOAD_ERROR;
     }
 
@@ -184,4 +174,50 @@ bool Sign::hasAnimatedObjects() const {
 void Sign::render(const std::string &config) {
   this->renderables = parseSignConfig(config);
   this->render();
+}
+
+const rgb_matrix::Font* Sign::getFont(const std::string &font_name) const {
+    auto it = font_cache.find(font_name);
+    if (it != font_cache.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+bool Sign::loadAllFonts() {
+    const std::string font_dir = ".";
+    
+    // Clear existing cache
+    font_cache.clear();
+    fonts.clear();
+    
+    try {
+        for (const auto &entry : std::filesystem::directory_iterator(font_dir)) {
+            if (entry.path().extension() == ".bdf") {
+                std::string font_path = entry.path().string();
+                std::string font_name = entry.path().stem().string(); // filename without extension
+                
+                // Load the font
+                rgb_matrix::Font font;
+                if (font.LoadFont(font_path.c_str())) {
+                    font_cache[font_name] = font;
+                    fonts.push_back(font_path);
+                    printf("Loaded font: %s -> %s\n", font_name.c_str(), font_path.c_str());
+                } else {
+                    fprintf(stderr, "Failed to load font: %s\n", font_path.c_str());
+                }
+            }
+        }
+    } catch (const std::filesystem::filesystem_error& ex) {
+        fprintf(stderr, "Failed to read font directory %s: %s\n", font_dir.c_str(), ex.what());
+        return false;
+    }
+    
+    if (font_cache.empty()) {
+        fprintf(stderr, "No .bdf font files found in %s\n", font_dir.c_str());
+        return false;
+    }
+    
+    printf("Successfully loaded %zu fonts into cache\n", font_cache.size());
+    return true;
 }

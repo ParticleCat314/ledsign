@@ -73,6 +73,19 @@ public:
     void setFont(const std::string &font_path);
 
     /**
+     * Get a font from the cache by name (e.g., "6x10").
+     * @param font_name Name of the font (without .bdf extension)
+     * @return Pointer to the font if found, nullptr otherwise
+     */
+    const rgb_matrix::Font* getFont(const std::string &font_name) const;
+
+    /**
+     * Load all available fonts into the cache.
+     * @return true if fonts were loaded successfully
+     */
+    bool loadAllFonts();
+
+    /**
      * Clear the entire display.
      */
     void clear();

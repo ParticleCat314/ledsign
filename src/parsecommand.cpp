@@ -9,10 +9,12 @@ TextObject::TextObject(const std::string &t, size_t xpos, size_t ypos, const rgb
 }
 
 void TextObject::Render(Sign &sign) {
-    // Set the font for this text object
-    std::string font_path = "./rpi-rgb-led-matrix/fonts/" + font_name + ".bdf";
-    sign.setFont(font_path);
-    sign.drawText(text, x, y, color, sign.current_font);
+    // Get the font for this text object from the sign's font cache
+    const rgb_matrix::Font* font = sign.getFont(font_name);
+    if (!font) {
+        font = &sign.current_font; // Fallback to current font
+    }
+    sign.drawText(text, x, y, color, *font);
 }
 
 TextScrollingObject::TextScrollingObject(const std::string &t, size_t ypos, size_t spd, const rgb_matrix::Color &c, const std::string &font)
@@ -23,9 +25,11 @@ TextScrollingObject::TextScrollingObject(const std::string &t, size_t ypos, size
 }
 
 void TextScrollingObject::Render(Sign &sign) {
-    // Set the font for this text object
-    std::string font_path = "./rpi-rgb-led-matrix/fonts/" + font_name + ".bdf";
-    sign.setFont(font_path);
+    // Get the font for this text object from the sign's font cache
+    const rgb_matrix::Font* font = sign.getFont(font_name);
+    if (!font) {
+        font = &sign.current_font; // Fallback to current font
+    }
     
     // Calculate time delta for smooth animation
     auto now = std::chrono::steady_clock::now();
@@ -39,7 +43,7 @@ void TextScrollingObject::Render(Sign &sign) {
     // Calculate text width to know when to reset
     int text_width = 0;
     for (char c : text) {
-        text_width += sign.current_font.CharacterWidth(c);
+        text_width += font->CharacterWidth(c);
     }
     
     // Reset to right side when text has completely scrolled off left
@@ -48,7 +52,7 @@ void TextScrollingObject::Render(Sign &sign) {
     }
     
     // Render the text at current position
-    sign.drawText(text, current_x_offset, y, color, sign.current_font);
+    sign.drawText(text, current_x_offset, y, color, *font);
 }
 
 // Helper function to safely parse an unsigned integer without exceptions
