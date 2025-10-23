@@ -4,7 +4,6 @@
 #include <cstring>
 #include <string>
 #include <iostream>
-
 static const char* SOCK_PATH = "/tmp/ledsign.sock";
 
 bool write_all(int fd, const std::string& s) {

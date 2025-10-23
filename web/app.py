@@ -1,37 +1,124 @@
-from sign import s 
-from sql import *
+"""
+Flask web application for controlling an LED sign.
+
+This module provides a web interface for:
+- Setting text on the LED sign manually
+- Creating and managing templates for text display
+- Scheduling text displays for specific times or recurring schedules
+- Managing the LED sign display through a web interface
+
+The application uses APScheduler for handling scheduled tasks and SQLite
+for storing templates and schedule information.
+"""
+
+# Standard library imports
+import json
 import os
-import signal
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from threading import Event
+
+# Third-party imports
+from flask import Flask, render_template, request, redirect, url_for, flash
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
-from flask import Flask, render_template, request, redirect, url_for, flash
-import json
 
+# Local imports
+import sign
+from sign import clear_sign, execute_scheduled_item
+from sql import *
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'  # Change this in production
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
+# App configuration
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax'
+)
+
+# Initialize scheduler
 scheduler = BackgroundScheduler(
     job_defaults=dict(coalesce=True, max_instances=1, misfire_grace_time=10)
 )
 
 
-### Flask Routes ###
+# Scheduler Integration Functions
+def load_scheduled_jobs():
+    """
+    Load all scheduled jobs from the database and add them to the scheduler.
+    This function is called during application startup.
+    """
 
+    now = datetime.now()
+    clear_expired_scheduled_items(now)
+
+    scheduled_items = get_all_scheduled_items()
+    
+    for item in scheduled_items:
+        try:
+            # Parse the scheduled datetime
+            scheduled_dt = datetime.fromisoformat(item['scheduled_datetime'])
+            
+            # Skip past items unless they're recurring
+            if not item['is_recurring'] and scheduled_dt < datetime.now():
+                continue
+            
+            # Get template payload if template_id is specified
+            payload_data = None
+            if item['template_id']:
+                template = get_template(item['template_id'])
+                if template:
+                    payload_data = parseJSONPayload(template['payload'])
+            
+            # Create job kwargs
+            job_kwargs = {
+                'schedule_id': item['id'],
+                'name': item['name']
+            }
+            
+            # Determine trigger type
+            if item['is_recurring'] == 1:
+                # For recurring items, use weekday/time if available
+                if item['recurring_weekdays'] and item['recurring_time']:
+                    cron_expr = create_cron_from_weekdays_time(item['recurring_weekdays'], item['recurring_time'])
+                    if cron_expr:
+                        trigger = CronTrigger.from_crontab(cron_expr)
+                    else:
+                        trigger = CronTrigger.from_crontab('0 * * * *')  # Fallback: every hour
+                else:
+                    trigger = CronTrigger.from_crontab('0 * * * *')  # Default: every hour
+            else:
+                # One-time scheduled item
+                trigger = DateTrigger(run_date=scheduled_dt)
+
+            
+            # Add job to scheduler
+            scheduler.add_job(
+                func=execute_scheduled_item,
+                trigger=trigger,
+                id=f"schedule_{item['id']}",
+                kwargs=job_kwargs,
+                replace_existing=True
+            )
+            
+            print(f"Loaded scheduled job: {item['name']} at {item['scheduled_datetime']}")
+            
+        except Exception as e:
+            print(f"Error loading scheduled job {item['id']}: {e}")
+
+
+
+
+# Flask Routes
 @app.route('/')
 def index():
     """Main dashboard page"""
     scheduled_items = get_all_scheduled_items()
     templates = get_all_templates()
-    print(scheduled_items)
-    
     # Convert Row objects to dictionaries and add human-readable weekday names
+
     scheduled_items_list = []
     for item in scheduled_items:
         item_dict = dict(item)
@@ -45,18 +132,34 @@ def index():
 @app.route('/set_text', methods=['POST'])
 def route_set_text():
     """Manually set text on the sign"""
-    text = request.form.get('text', '')
-    x = int(request.form.get('x', 0))
-    y = int(request.form.get('y', 10))
-    color_hex = request.form.get('color', '#ffff00')
-    
-    # Convert hex color to RGB tuple
-    color_hex = color_hex.lstrip('#')
-    color = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
-    
     try:
-        set_text(text=text, x=x, y=y, color=color)
+        text = request.form.get('text', '').strip()
+        if not text:
+            flash('Text cannot be empty', 'error')
+            return redirect(url_for('index'))
+            
+        x = int(request.form.get('x', 0))
+        y = int(request.form.get('y', 10))
+        color_hex = request.form.get('color', '#ffff00')
+        
+        # Basic validation
+        if x < 0 or y < 0:
+            flash('Position values must be non-negative', 'error')
+            return redirect(url_for('index'))
+        
+        # Convert hex color to RGB tuple
+        color_hex = color_hex.lstrip('#')
+        if len(color_hex) != 6:
+            flash('Invalid color format', 'error')
+            return redirect(url_for('index'))
+            
+        color = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
+        
+        sign.set(text=text, x=x, y=y, color=color)
         flash(f'Sign updated with text: "{text}"', 'success')
+        
+    except ValueError:
+        flash('Invalid input values provided', 'error')
     except Exception as e:
         flash(f'Error updating sign: {str(e)}', 'error')
     
@@ -67,8 +170,7 @@ def route_set_text():
 def route_clear_sign():
     """Clear the sign display"""
     try:
-        from sign import s
-        s.clear()
+        clear_sign()
         flash('Sign cleared successfully', 'success')
     except Exception as e:
         flash(f'Error clearing sign: {str(e)}', 'error')
@@ -100,6 +202,7 @@ def route_add_schedule():
         # Use a placeholder datetime - it won't be used for scheduling
         if not scheduled_datetime:
             scheduled_datetime = '2024-01-01 00:00:00'
+
     
     # Validate that we have either datetime OR recurring settings
     if not is_recurring and not scheduled_datetime:
@@ -109,12 +212,15 @@ def route_add_schedule():
     if is_recurring and (not recurring_weekdays or not recurring_time):
         flash('Please select weekdays and time for recurring schedules', 'error')
         return redirect(url_for('index'))
-    
+
+
+
     # Convert empty string to None for template_id
     if template_id == '':
         template_id = None
     else:
         template_id = int(template_id)
+
     
     try:
         # If no template is selected, create a custom payload
@@ -126,31 +232,29 @@ def route_add_schedule():
             
             # Create a custom template for this schedule
             payload = json.dumps({
-                "type": "static",
+                "name": f"Custom_{label}",
                 "text": [{
+                    "type": "static",
                     "content": custom_text,
                     "x": 0,
                     "y": 10,
                     "color": color
                 }]
             })
-            template_id = add_template(f"Custom_{label}", payload, 'static')
+            template_id = add_template(f"Custom_{label}", payload)
         
         item_id = add_scheduled_item(
-            label=label,
+            name=label,
             scheduled_datetime=scheduled_datetime,
             is_recurring=is_recurring,
             template_id=template_id,
             recurring_weekdays=recurring_weekdays,
-            recurring_time=recurring_time
         )
         
+
         # Add to scheduler if it's a future time or recurring
-        from datetime import datetime
         if is_recurring and recurring_weekdays and recurring_time:
             # Use weekday-based scheduling
-            from apscheduler.triggers.cron import CronTrigger
-            
             cron_expr = create_cron_from_weekdays_time(recurring_weekdays, recurring_time)
             if cron_expr:
                 trigger = CronTrigger.from_crontab(cron_expr)
@@ -161,24 +265,25 @@ def route_add_schedule():
                 func=execute_scheduled_item,
                 trigger=trigger,
                 id=f"schedule_{item_id}",
-                kwargs={'schedule_id': item_id, 'label': label},
+                kwargs={'schedule_id': item_id, 'name': label},
                 replace_existing=True
             )
         elif not is_recurring:
             # One-time scheduled item
             scheduled_dt = datetime.fromisoformat(scheduled_datetime)
             if scheduled_dt > datetime.now():
-                from apscheduler.triggers.date import DateTrigger
-                
                 scheduler.add_job(
                     func=execute_scheduled_item,
                     trigger=DateTrigger(run_date=scheduled_dt),
                     id=f"schedule_{item_id}",
-                    kwargs={'schedule_id': item_id, 'label': label},
+                    kwargs={'schedule_id': item_id, 'name': label},
                     replace_existing=True
                 )
         
         flash(f'Scheduled item "{label}" added successfully', 'success')
+        
+    except ValueError as e:
+        flash(f'Invalid input: {str(e)}', 'error')
     except Exception as e:
         flash(f'Error adding scheduled item: {str(e)}', 'error')
     
@@ -210,22 +315,22 @@ def route_delete_schedule(item_id):
 @app.route('/add_template', methods=['POST'])
 def route_add_template():
     """Add a new template"""
-    label = request.form.get('label', '')
-    template_type = request.form.get('template_type', 'static')
-    payload_manual = request.form.get('payload_manual', '')
-    
     try:
-        # If manual payload is provided, use it
-        if payload_manual.strip():
-            payload = payload_manual
-            # Validate JSON
-            json.loads(payload)
-        else:
-            # Build payload from form fields
-            payload = build_template_payload(request.form, template_type)
-        
-        template_id = add_template(label=label, payload=payload, template_type=template_type)
+        label = request.form.get('template_name', '').strip()
+        if not label:
+            flash('Template name cannot be empty', 'error')
+            return redirect(url_for('index'))
+            
+        # Build payload from form fields
+        form_json = parse_form(request.form)
+        if not form_json.get('items'):
+            flash('Template must have at least one text item', 'error')
+            return redirect(url_for('index'))
+            
+        payload = json.dumps(form_json.get('items', []))
+        template_id = add_template(name=label, payload=payload)
         flash(f'Template "{label}" created successfully', 'success')
+
     except json.JSONDecodeError:
         flash('Invalid JSON payload', 'error')
     except Exception as e:
@@ -234,53 +339,65 @@ def route_add_template():
     return redirect(url_for('index'))
 
 
-def build_template_payload(form_data, template_type):
-    """Build template payload from form data"""
-    text_items = []
-    
-    # Find all text items
-    index = 0
-    while f'text_content_{index}' in form_data:
-        content = form_data.get(f'text_content_{index}', '')
-        if content:
-            x = int(form_data.get(f'text_x_{index}', 0))
-            y = int(form_data.get(f'text_y_{index}', 10))
-            color_hex = form_data.get(f'text_color_{index}', '#ffff00').lstrip('#')
-            color = [int(color_hex[i:i+2], 16) for i in (0, 2, 4)]
+
+def parse_form(form):
+    """Parse form data into JSON payload"""
+    template_type = "static"
+    payload = {
+        'type': template_type,
+        'items': [],
+    }
+
+    # Loop through all "text_content_X" fields
+    i = 0
+    while f'text_content_{i}' in form:
+        content = form.get(f'text_content_{i}', '').strip()
+        if not content:  # Skip empty content
+            i += 1
+            continue
             
-            text_item = {
+        try:
+            x = int(form.get(f'text_x_{i}', 0))
+            y = int(form.get(f'text_y_{i}', 10))
+            color_hex = form.get(f'text_color_{i}', '#ffff00').lstrip('#')
+            
+            # Validate color format
+            if len(color_hex) != 6:
+                raise ValueError(f"Invalid color format for item {i}")
+                
+            color = [int(color_hex[j:j+2], 16) for j in (0, 2, 4)]
+            element_type = form.get(f'element_type_{i}', 'static')
+
+            item = {
+                'type': element_type,
                 'content': content,
                 'x': x,
                 'y': y,
-                'color': color
+                'color': color,
             }
             
-            # Add special fields based on template type
-            if template_type == 'scrolling':
-                speed = int(form_data.get(f'text_speed_{index}', 50))
-                direction = form_data.get(f'text_direction_{index}', 'left')
-                text_item.update({
+            if element_type == 'mixed':
+                template_type = 'mixed'
+                payload['type'] = template_type
+                speed = int(form.get(f'text_speed_{i}', 1))
+                item = {
+                    'type': 'scroll',
+                    'content': content,
+                    'x': x,
+                    'y': y,
+                    'color': color,
                     'speed': speed,
-                    'direction': direction
-                })
-            elif template_type == 'animation':
-                effect = form_data.get(f'text_effect_{index}', 'blink')
-                duration = int(form_data.get(f'text_duration_{index}', 5))
-                text_item.update({
-                    'effect': effect,
-                    'duration': duration
-                })
+                }
+
+            payload['items'].append(item)
             
-            text_items.append(text_item)
-        index += 1
-    
-    # Create payload
-    payload = {
-        'type': template_type,
-        'text': text_items
-    }
-    
-    return json.dumps(payload)
+        except (ValueError, TypeError) as e:
+            # Skip malformed items but continue processing
+            pass
+            
+        i += 1
+
+    return payload
 
 
 @app.route('/delete_template/<int:template_id>', methods=['POST'])
@@ -298,41 +415,28 @@ def route_delete_template(template_id):
     return redirect(url_for('index'))
 
 
-def recover_scheduled_jobs():
-    ### Rerun the last job or the next job if ready
-    ### Will fail for various reasons lol. Just gonna assume it works for now
-    last_run = get_last_run()
-    if last_run:
-        last_run_time = datetime.fromisoformat(last_run['last_run_datetime'])
-        schedule_id = last_run['schedule_id']
-        schedule = get_scheduled_item(schedule_id)
-        if schedule:
-            # Re-execute the last job
-            print(f"Re-executing last job: {schedule['label']}")
-            execute_scheduled_item(schedule_id=schedule_id, label=schedule['label'])
-            return
-
-   
-
-
-def main():
-
-    subprocess.run(["./rpi-rgb-led-matrix/custom/client", str("CLEAR")])  # Simulate duration
-    print("Initializing database…")
+if __name__ == "__main__":
+    print("Initializing LED sign web application...")
+    
+    # Warn about development secret key
+    if app.secret_key == 'dev-key-change-in-production':
+        print("Warning: Using development secret key. Set SECRET_KEY environment variable for production!")
+    
+    print("Initializing database...")
     init_db()
     recover_scheduled_jobs()
 
-    # Load existing scheduled jobs from database
+    # Load existing scheduled jobs from database and start scheduler
+    print("Loading scheduled jobs...")
     load_scheduled_jobs()
-
     scheduler.start()
-
-    print("Starting Flask web server on http://localhost:5000")
-    print("Ctrl+C to exit")
     
-    # Run Flask app
-    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    # Run Flask app with configurable settings
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    port = int(os.environ.get('FLASK_PORT', '5000'))
+    debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    
+    print(f"Starting Flask app on {host}:{port} (debug={debug})")
+    app.run(debug=debug, host=host, port=port, use_reloader=False)
 
 
-if __name__ == "__main__":
-    main()

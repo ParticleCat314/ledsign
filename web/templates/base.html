@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LED Sign Controller{% endblock %}</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% block flash_messages %}
+        {% include 'components/flash_messages.html' %}
+    {% endblock %}
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- JavaScript Files -->
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/form-handlers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/template-builder.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

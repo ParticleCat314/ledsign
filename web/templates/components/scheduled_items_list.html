@@ -1,0 +1,59 @@
+<!-- Scheduled Items List -->
+<div class="section">
+    <h2>Scheduled Items</h2>
+    {% if scheduled_items %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Label</th>
+                    <th>Scheduled Time</th>
+                    <th>Recurring</th>
+                    <th>Weekdays</th>
+                    <th>Template</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in scheduled_items %}
+                    <tr>
+                        <td>{{ item.label }}</td>
+                        <td>
+                            {% if item.is_recurring and item.recurring_time %}
+                                {{ item.recurring_time }}
+                            {% else %}
+                                {{ item.scheduled_datetime }}
+                            {% endif %}
+                        </td>
+                        <td>{{ "Yes" if item.is_recurring else "No" }}</td>
+                        <td>
+                            {% if item.is_recurring and item.recurring_weekdays %}
+                                {{ get_weekday_names(item.recurring_weekdays) }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.template_id %}
+                                {% for template in templates %}
+                                    {% if template.id == item.template_id %}
+                                        {{ template.label }}
+                                        <small>({{ template.template_type }})</small>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Custom
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" action="/delete_schedule/{{ item.id }}" style="display: inline;">
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No scheduled items found.</p>
+    {% endif %}
+</div>

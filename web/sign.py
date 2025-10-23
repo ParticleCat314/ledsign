@@ -1,58 +1,115 @@
-import json
-''' 
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+"""
+LED sign communication interface.
+
+This module provides a Python interface to communicate with the LED sign hardware
+through a Unix domain socket. It handles:
+- Sending commands to the LED sign server
+- Setting text with position and color
+- Clearing the display
+- Executing scheduled items from templates
+
+The module acts as a bridge between the web application and the underlying
+C++ LED sign control system.
+"""
+
+import socket
+from sql import *
+
+def send_command(command):
+    """Send a command to the LED sign server and return the response."""
+    SOCK_PATH = "/tmp/ledsign.sock"
+    try:
+        # Create Unix domain socket
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        
+        # Connect to server
+        sock.connect(SOCK_PATH)
+        
+        # Send command with newline
+        command_line = command + "\n"
+        sock.sendall(command_line.encode('utf-8'))
+        
+        # Read response until newline
+        response = ""
+        while True:
+            data = sock.recv(1)
+            if not data:
+                break
+            char = data.decode('utf-8')
+            if char == '\n':
+                break
+            response += char
+        
+        sock.close()
+        return response
+        
+    except FileNotFoundError:
+        return "ERROR: LED sign server not running (socket not found)"
+    except ConnectionRefusedError:
+        return "ERROR: Connection refused by LED sign server"
+    except Exception as e:
+        return f"ERROR: {str(e)}"
 
 
-options = RGBMatrixOptions()
-options.rows = 16
-options.cols = 32
-options.chain_length = 4
-options.parallel = 1
-options.hardware_mapping = 'regular'  # If you have an Adafruit HAT: 'adafruit-hat'
-matrix = RGBMatrix(options=options)
-offscreen_canvas = matrix.CreateFrameCanvas()
-font = graphics.Font()
-font.LoadFont("./fonts/7x13.bdf")
-
-class Sign:
-    def __init__(self, text, color=(255, 255, 0), speed=50):
-        self.text = text
-        self.color = graphics.Color(*color)
-        self.speed = speed
-        self.pos = offscreen_canvas.width
-        self.color = (255, 255, 0)
-        self.clear()
-
-    def clear(self):
-        offscreen_canvas.Clear()
-        matrix.SwapOnVSync(offscreen_canvas)
+def clear_sign():
+    """Clear the LED sign display."""
+    return send_command("CLEAR")
 
 
-    def set_text(self, text, x=0, y=10, color=self.color):
-        self.text = text
-        self.pos = offscreen_canvas.width
-        self.color = graphics.Color(*color)
-        self.clear()
-        graphics.DrawText(offscreen_canvas, font, x, y, self.color, self.text)
-'''
+def set_text(text, x=0, y=10, color=(255, 255, 0)):
+    """Set text on the LED sign with position and color."""
+    r, g, b = color
+    command = f"SET;{text};{x};{y};{r},{g},{b}"
+    return send_command(command)
 
 
-# Dummy class
-class Sign:
-    def __init__(self, text, color=(255, 255, 0), speed=50):
-        self.text = text
-        self.color = color
-        self.speed = speed
-
-    def clear(self):
-        print("Sign cleared")
-
-    def set_text(self, text, x=0, y=10, color=(255, 255, 0)):
-        self.text = text
-        self.color = color
-        print( f"Sign text set to: {text} with color {color}" )
+def set(text, x=0, y=10, color=(255, 255, 0)):
+    """Alias for set_text for backward compatibility."""
+    return set_text(text, x, y, color)
 
 
-### Global stuff because why not
-s = Sign("Hello, World!", color=(0, 255, 0), speed=100)
+
+def execute_scheduled_item(schedule_id, name, **kwargs):
+    """
+    Execute a scheduled item. This function is called by the scheduler.
+    Args:
+        schedule_id (int): ID of the scheduled item
+        label (str): Label of the scheduled item
+        **kwargs: Additional parameters for the scheduled action
+    """
+    
+    #try:
+    print(f"Executing scheduled item {schedule_id} with name '{name}'")
+    scheduled_item = get_scheduled_item(schedule_id)
+
+    # Get template data
+    template = get_template(scheduled_item['template_id'])
+
+    if not template:
+        print(f"Template not found for schedule {schedule_id}")
+        return
+
+    
+    template_data = parseJSONPayload(template['payload'])
+
+    if not template_data:
+        print(f"Invalid payload for template {template['id']}")
+        return
+
+    sign_name = template_data.get('name', 'LED Sign template?')
+    sign_config = template_data.get('text', {})
+
+    for item in sign_config:
+        print(f"Processing item: {item}")
+        if item.get('type') == 'static':
+            text = item.get('content', name)
+            x = item.get('x', 0)
+            y = item.get('y', 10)
+            color = tuple(item.get('color', [255, 255, 0]))
+            print(f"Setting text on LED sign: '{text}' at ({x},{y}) with color {color}")
+            set_text(text=text, x=x, y=y, color=color)
+
+
+
+
 

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <memory>
 #include <string>
 #include <unistd.h>
 #include <stdio.h>
@@ -6,12 +8,20 @@
 #include <stdint.h>
 #include <memory>
 #include <chrono>
+#include <unordered_map>
+#include <stdint.h>
+#include <filesystem>
+#include <sstream>
+
+
 #include "graphics.h"
 #include "led-matrix.h"
-#include <unordered_map>
+
 
 using namespace rgb_matrix;
 struct Sign;
+
+#include <atomic>
 
 
 enum class RenderableType {
@@ -74,7 +84,9 @@ std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &conf
 struct Sign {
     size_t width = 64;
     size_t height = 32;
-    volatile bool interrupt_received = false;
+
+    std::atomic<bool> interrupt_received = false;
+
     std::vector<std::shared_ptr<Renderable>> renderables;
     
 
@@ -97,7 +109,6 @@ public:
 
     static Sign create();
 
-    // Initialize the sign hardware. Must call before use.
     int Initialize();
 
     void setFont(const std::string &font_path);
@@ -112,16 +123,11 @@ public:
 
     void render();
     
-    // Render a single frame (for animation loops)
     void renderFrame();
     
-    // Check if any renderables need animation updates
     bool hasAnimatedObjects() const;
 
-    void render(const std::string &config) {
-      this->renderables = parseSignConfig(config);
-      this->render();
-    }
+    void render(const std::string &config);
 
     ~Sign() {
         if (canvas) delete canvas;

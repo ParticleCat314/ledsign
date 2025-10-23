@@ -1,12 +1,4 @@
-#include <string>
-#include <unistd.h>
-#include <stdio.h>
 #include "sign.h"
-#include <stdint.h>
-#include <vector>
-#include <memory>
-#include <filesystem>
-#include <sstream>
 #include "pixel-mapper.h"
 
 #define LEDROWS 16
@@ -201,7 +193,6 @@ int Sign::Initialize() {
     RGBMatrix::Options matrix_options;
     rgb_matrix::RuntimeOptions runtime_opt;
 
-    // I shouldn't hardcode these but oh well
     matrix_options.hardware_mapping = HARDWAREMAPPING;
     matrix_options.rows = LEDROWS;
     matrix_options.cols = LEDCOLS;
@@ -352,4 +343,9 @@ bool Sign::hasAnimatedObjects() const {
         }
     }
     return false;
+}
+
+void Sign::render(const std::string &config) {
+  this->renderables = parseSignConfig(config);
+  this->render();
 }

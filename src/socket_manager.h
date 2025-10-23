@@ -15,10 +15,6 @@
 
 static const char* SOCK_PATH = "/tmp/ledsign.sock";
 
-
-
-volatile bool g_running = true;
-
 void cleanup_and_exit(int) {
     unlink(SOCK_PATH);
     _exit(0);
@@ -61,11 +57,10 @@ bool read_line(int fd, std::string& out) {
 }
 
 
-
 int run_socket_server(Sign& sign) {
 
     // Create the sign worker thread
-    std::thread t([&sign]() {});
+    std::thread t;
 
 
     // Clean up socket file on crash/ctrl-c

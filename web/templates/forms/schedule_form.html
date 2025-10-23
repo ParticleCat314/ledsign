@@ -1,0 +1,63 @@
+<!-- Add Scheduled Item Form -->
+<div class="section">
+    <h2>Schedule New Display</h2>
+    <form method="POST" action="/add_schedule">
+        <div class="two-column">
+            <div>
+                <div class="form-group">
+                    <label for="schedule_label">Label:</label>
+                    <input type="text" id="schedule_label" name="label" required>
+                </div>
+                <div id="datetime_field" class="form-group">
+                    <label for="scheduled_datetime">Schedule Date & Time:</label>
+                    <input type="datetime-local" id="scheduled_datetime" name="scheduled_datetime">
+                </div>
+                <div class="form-group">
+                    <label for="is_recurring">
+                        <input type="checkbox" id="is_recurring" name="is_recurring"> Recurring
+                    </label>
+                </div>
+                <div id="recurring_options" class="recurring-options">
+                    <div class="form-group">
+                        <label>Select Days:</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" name="weekdays" value="0"> Monday</label>
+                            <label><input type="checkbox" name="weekdays" value="1"> Tuesday</label>
+                            <label><input type="checkbox" name="weekdays" value="2"> Wednesday</label>
+                            <label><input type="checkbox" name="weekdays" value="3"> Thursday</label>
+                            <label><input type="checkbox" name="weekdays" value="4"> Friday</label>
+                            <label><input type="checkbox" name="weekdays" value="5"> Saturday</label>
+                            <label><input type="checkbox" name="weekdays" value="6"> Sunday</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="recurring_time">Time:</label>
+                        <input type="time" id="recurring_time" name="recurring_time" value="09:00">
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="form-group">
+                    <label for="template_id">Use Template (optional):</label>
+                    <select id="template_id" name="template_id">
+                        <option value="">-- Create Custom --</option>
+                        {% for template in templates %}
+                            <option value="{{ template.id }}">{{ template.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="custom_text_fields">
+                    <div class="form-group">
+                        <label for="custom_text">Custom Text:</label>
+                        <input type="text" id="custom_text" name="custom_text">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom_color">Custom Color:</label>
+                        <input type="color" id="custom_color" name="custom_color" value="#ffff00">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn">Schedule Display</button>
+    </form>
+</div>
