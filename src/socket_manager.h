@@ -11,12 +11,11 @@
 #include <sys/stat.h>
 #include <thread>
 
+#include "constants.h"
 #include "sign.h"
 
-static const char* SOCK_PATH = "/tmp/ledsign.sock";
-
 void cleanup_and_exit(int) {
-    unlink(SOCK_PATH);
+    unlink(LedSignConstants::SOCKET_PATH);
     _exit(0);
 }
 
@@ -50,7 +49,7 @@ bool read_line(int fd, std::string& out) {
             if (c == '\n')
                 return true;
             out.push_back(c);
-            if (out.size() > 64 * 1024)
+            if (out.size() > LedSignConstants::MAX_MESSAGE_SIZE)
                 return false; // sanity cap
         }
     }
@@ -71,7 +70,7 @@ int run_socket_server(Sign& sign) {
     sigaction(SIGTERM, &sa, nullptr);
 
     // Create, bind, listen
-    ::unlink(SOCK_PATH);
+    ::unlink(LedSignConstants::SOCKET_PATH);
     int s = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (s < 0) {
         perror("socket");
@@ -80,7 +79,7 @@ int run_socket_server(Sign& sign) {
 
     sockaddr_un addr{};
     addr.sun_family = AF_UNIX;
-    std::snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", SOCK_PATH);
+    std::snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", LedSignConstants::SOCKET_PATH);
 
     // Set tighter permissions: owner-only
     ::umask(0077);
@@ -90,15 +89,15 @@ int run_socket_server(Sign& sign) {
         return 1;
     }
 
-    // Ensure 0700 on the socket node
-    ::chmod(SOCK_PATH, 0700);
+    // Ensure proper permissions on the socket node
+    ::chmod(LedSignConstants::SOCKET_PATH, LedSignConstants::SOCKET_PERMISSIONS);
 
-    if (::listen(s, 8) < 0) {
+    if (::listen(s, LedSignConstants::SOCKET_BACKLOG) < 0) {
         perror("listen");
         return 1;
     }
 
-    std::cout << "LED sign daemon listening on " << SOCK_PATH << std::endl;
+    std::cout << "LED sign daemon listening on " << LedSignConstants::SOCKET_PATH << std::endl;
 
 
     while (true) {
@@ -147,7 +146,13 @@ int run_socket_server(Sign& sign) {
         ::close(c);
     }
 
-    ::unlink(SOCK_PATH);
+    // Ensure thread is properly joined before cleanup
+    if (t.joinable()) {
+        sign.handleInterrupt(true);
+        t.join();
+    }
+
+    ::unlink(LedSignConstants::SOCKET_PATH);
     return 0;
 }
 

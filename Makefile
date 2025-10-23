@@ -4,7 +4,7 @@
 CXX := g++
 
 # Source files
-SRCS := src/app.cpp src/sign.cpp
+SRCS := src/app.cpp src/sign.cpp src/parsecommand.cpp
 CLIENT_SRCS := src/client.cpp
 
 # Include and library directories

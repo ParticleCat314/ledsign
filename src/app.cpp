@@ -3,13 +3,13 @@
 
 int main() {
     // Create sign instance
-    Sign sign = Sign::create();
+    Sign sign;
     
     // Initialize sign with error checking
-    int init_result = sign.Initialize();
-    if (init_result != 0) {
-        fprintf(stderr, "Failed to initialize LED sign (error code: %d)\n", init_result);
-        return init_result;
+    SignError init_result = sign.Initialize();
+    if (init_result != SignError::SUCCESS) {
+        fprintf(stderr, "Failed to initialize LED sign (error code: %d)\n", static_cast<int>(init_result));
+        return static_cast<int>(init_result);
     }
     
     sign.clear();

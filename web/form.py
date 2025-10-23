@@ -88,10 +88,10 @@ def parse_form(form):
                 'color': color,
             }
             
-            if element_type == 'mixed':
+            if element_type == 'scrolling':
                 speed = int(form.get(f'text_speed_{i}', 1))
                 item = {
-                    'type': 'mixed',
+                    'type': 'scrolling',
                     'content': content,
                     'x': x,
                     'y': y,

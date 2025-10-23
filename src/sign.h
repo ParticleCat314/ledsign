@@ -1,89 +1,33 @@
 #pragma once
 
+#include <atomic>
+#include <chrono>
+#include <filesystem>
 #include <memory>
 #include <string>
-#include <unistd.h>
-#include <stdio.h>
-#include <vector>
-#include <stdint.h>
-#include <memory>
-#include <chrono>
 #include <unordered_map>
-#include <stdint.h>
-#include <filesystem>
-#include <sstream>
+#include <vector>
 
-
+#include "constants.h"
 #include "graphics.h"
 #include "led-matrix.h"
-
+#include "parsecommand.h"
 
 using namespace rgb_matrix;
 struct Sign;
 
-#include <atomic>
-
-
-enum class RenderableType {
-    STATIC,
-    SCROLLING,
-    ANIMATED,
-};
-
-/*
-  Abstract base class for renderable objects on the sign.
-*/
-struct Renderable {
-    RenderableType type;
-public:
-    Renderable() {}
-    virtual ~Renderable() = default;
-    virtual void Render(Sign &sign) = 0;
-};
-
-
-struct TextObject : public Renderable {
-public:
-    std::string text;
-    size_t x;
-    size_t y;
-    Color color = Color(255, 255, 255); // Default white color
-
-    TextObject(
-      const std::string &t,
-      size_t xpos,
-      size_t ypos,
-      const Color &c = Color(255, 255, 255)
-    );
-
-    void Render(Sign &sign) override;
-};
-
-struct TextScrollingObject : public Renderable {
-public:
-    std::string text;
-    size_t y;
-    size_t speed; // Pixels per second
-    Color color = Color(255, 255, 255); // Default white color
-    
-    // Animation state
-    mutable int current_x_offset = 0;
-    mutable std::chrono::steady_clock::time_point last_update = std::chrono::steady_clock::now();
-    
-    TextScrollingObject(
-      const std::string &t,
-      size_t ypos,
-      size_t spd,
-      const Color &c = Color(255, 255, 255)
-    );
-    void Render(Sign &sign) override;
-};
-
-std::vector<std::shared_ptr<Renderable>> parseSignConfig(const std::string &config);
-
+/**
+ * LED Sign Display Controller
+ * 
+ * This class manages an RGB LED matrix display, providing functionality for:
+ * - Rendering static and animated text
+ * - Font management and caching
+ * - Brightness control
+ * - Animation timing and frame rendering
+ */
 struct Sign {
-    size_t width = 64;
-    size_t height = 32;
+    size_t width = LedSignConstants::DEFAULT_DISPLAY_WIDTH;
+    size_t height = LedSignConstants::DEFAULT_DISPLAY_HEIGHT;
 
     std::atomic<bool> interrupt_received = false;
 
@@ -98,40 +42,84 @@ struct Sign {
 
     rgb_matrix::Font current_font;
 
-    RGBMatrix *canvas;
+    std::shared_ptr<RGBMatrix> canvas;
     
     // Animation timing
     std::chrono::steady_clock::time_point last_render_time = std::chrono::steady_clock::now();
     
 
 public:
+    /**
+     * Constructor - creates an uninitialized Sign object.
+     * Call Initialize() to set up the LED matrix hardware.
+     */
     Sign();
+    
+    /**
+     * Destructor - ensures proper cleanup of resources and stops any running animations.
+     */
+    ~Sign();
 
-    static Sign create();
+    /**
+     * Initialize the LED matrix hardware and load fonts.
+     * @return SignError::SUCCESS on success, or appropriate error code on failure
+     */
+    SignError Initialize();
 
-    int Initialize();
-
+    /**
+     * Set the current font for text rendering.
+     * @param font_path Path to a .bdf font file
+     */
     void setFont(const std::string &font_path);
 
+    /**
+     * Clear the entire display.
+     */
     void clear();
 
-    void drawText(const std::string &text, size_t x, size_t y, const Color &color, const rgb_matrix::Font &font);
+    /**
+     * Draw text at the specified position with given color and font.
+     * @param text Text string to render
+     * @param x X coordinate (pixels from left)
+     * @param y Y coordinate (pixels from top) 
+     * @param color RGB color for the text
+     * @param font Font to use for rendering
+     */
+    void drawText(const std::string &text, size_t x, size_t y, const rgb_matrix::Color &color, const rgb_matrix::Font &font) const;
 
-    void setBrightness(int brightness);
+    /**
+     * Set display brightness.
+     * @param brightness Brightness level (1-100)
+     */
+    void setBrightness(int brightness) const;
 
+    /**
+     * Signal interruption to stop animation loops.
+     * @param interrupt true to interrupt, false to resume
+     */
     void handleInterrupt(bool interrupt);
 
+    /**
+     * Start rendering all configured objects. Will run continuously if animated objects are present.
+     */
     void render();
     
+    /**
+     * Render a single frame of all objects.
+     */
     void renderFrame();
     
+    /**
+     * Check if any of the current renderables require animation.
+     * @return true if continuous rendering is needed
+     */
     bool hasAnimatedObjects() const;
 
+    /**
+     * Parse configuration string and render the specified objects.
+     * @param config Configuration string defining objects to render
+     */
     void render(const std::string &config);
-
-    ~Sign() {
-        if (canvas) delete canvas;
-    }
 
 };
 

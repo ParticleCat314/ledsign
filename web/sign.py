@@ -116,7 +116,7 @@ def execute_scheduled_item(schedule_id, name, **kwargs):
             x = item.get('x', 0)
             y = item.get('y', 10)
             color = tuple(item.get('color', [255, 255, 0]))
-            speed = item.get('speed', 1)
+            speed = item.get('speed', 70)
             print(f"Setting scrolling text on LED sign: '{text}' at ({x},{y}) with color {color} and speed {speed}")
             command += f"SCROLL;{text};{x};{y};({color[0]},{color[1]},{color[2]});{speed};END;"
 

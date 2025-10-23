@@ -4,7 +4,7 @@
 #include <cstring>
 #include <string>
 #include <iostream>
-static const char* SOCK_PATH = "/tmp/ledsign.sock";
+#include "constants.h"
 
 bool write_all(int fd, const std::string& s) {
     const char* p = s.c_str();
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     if (s < 0) { perror("socket"); return 1; }
 
     sockaddr_un addr{}; addr.sun_family = AF_UNIX;
-    std::snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", SOCK_PATH);
+    std::snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", LedSignConstants::SOCKET_PATH);
 
     if (::connect(s, (sockaddr*)&addr, sizeof(sa_family_t) + std::strlen(addr.sun_path)) < 0) {
         perror("connect"); return 1;
